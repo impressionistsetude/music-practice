@@ -1,0 +1,1674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Music Practice Studio</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400&display=swap');
+:root{--bg:#faf8f5;--bg2:#f2ede6;--bg3:#ebe4da;--border:#d8cfc4;--border2:#c8bfb4;--text:#1a1612;--text2:#3d3530;--text3:#6b5f55;--text4:#9a8c82;--gold:#8b5e2a;--blue:#1a5f8a;--green:#2a7a4a;--red:#8a2a2a;--accent:#7a1f1f}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg)}
+body{font-family:Arial,sans-serif;color:var(--text);display:flex;flex-direction:column;height:100vh;font-size:19px;overflow:hidden}
+.hdr{display:flex;align-items:flex-end;justify-content:space-between;padding:14px 28px 12px;border-bottom:2px solid var(--accent);background:var(--accent);flex-shrink:0}
+.hdr-left .sup{font-family:'DM Mono',monospace;font-size:9px;color:rgba(255,255,255,0.6);letter-spacing:3px;text-transform:uppercase;margin-bottom:3px}
+.hdr-left h1{font-size:24px;font-weight:300;letter-spacing:.4px;line-height:1;color:#fff}
+.hdr-left h1 em{font-style:italic;color:#f0c080}
+.hdr-right{display:flex;align-items:flex-end;gap:16px}
+.hdr-stats{font-family:'DM Mono',monospace;font-size:9px;color:rgba(255,255,255,0.6);text-align:right;line-height:1.9}
+.hdr-stats span{color:#f0c080}
+.auth-bar{display:flex;align-items:center;gap:7px;font-family:'DM Mono',monospace;font-size:9px;color:rgba(255,255,255,0.6)}
+.auth-dot{width:6px;height:6px;border-radius:50%;background:#6ade90;flex-shrink:0}
+.auth-dot.off{background:#ff8888}
+.auth-user{color:rgba(255,255,255,0.85);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sync-msg{font-family:'DM Mono',monospace;font-size:10px;color:#6ade90;letter-spacing:2px;text-transform:uppercase;transition:opacity .5s;font-weight:600}
+.btn-signout{background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:rgba(255,255,255,0.8);border-radius:3px;padding:2px 8px;cursor:pointer;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1px}
+.tabs{display:flex;background:var(--bg3);border-bottom:1px solid var(--border);flex-shrink:0;padding:0 16px;gap:4px}
+.tab{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;padding:10px 18px;cursor:pointer;border:none;background:none;color:var(--text4);border-bottom:2px solid transparent;transition:all .2s;margin-bottom:-1px}
+.tab:hover{color:var(--text2)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab-count{display:inline-block;background:var(--border);color:var(--text4);border-radius:20px;padding:1px 7px;font-size:9px;margin-left:4px}
+.tab.active .tab-count{background:var(--accent);color:#fff}
+.main{display:flex;flex:1;overflow:hidden}
+.left{display:flex;flex-direction:column;flex:1;overflow:hidden;border-right:1px solid var(--border)}
+.left-toolbar{padding:10px 14px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--bg2);gap:10px}
+.search-box{flex:1;background:#fff;border:1px solid var(--border);border-radius:5px;padding:7px 13px;font-family:Arial,sans-serif;font-size:17px;color:var(--text);outline:none;transition:border-color .2s}
+.search-box:focus{border-color:var(--gold)}
+.btn-add{font-family:Arial,sans-serif;font-size:14px;background:var(--accent);border:none;color:#fff;padding:7px 16px;border-radius:4px;cursor:pointer;white-space:nowrap;transition:all .2s}
+.btn-add:hover{background:#5a1515}
+.piece-grid-wrap{overflow-y:auto;flex:1;padding:12px}
+.piece-grid-wrap::-webkit-scrollbar{width:4px}
+.piece-grid-wrap::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.group-header{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--text4);padding:14px 4px 8px;display:flex;align-items:center;gap:8px}
+.group-header:first-child{padding-top:2px}
+.group-line{flex:1;height:1px;background:var(--border)}
+.group-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.piece-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-bottom:6px}
+.pbtn{background:#fff;border:1px solid var(--border);border-radius:7px;padding:12px 14px;cursor:pointer;text-align:left;color:var(--text);transition:all .15s;font-family:Arial,sans-serif;box-shadow:0 1px 2px rgba(0,0,0,0.04)}
+.pbtn:hover{background:var(--bg3);border-color:var(--accent);transform:translateY(-1px);box-shadow:0 3px 8px rgba(0,0,0,0.08)}
+.pbtn.act{background:#fff8f0;border-color:var(--gold);box-shadow:0 0 0 2px #c9a96e44}
+.pbtn.practiced{background:#f0faf3;border-color:#4a9e6a;box-shadow:0 0 0 2px #4a9e6a33}
+.pbtn.practiced:hover{background:#e4f5ea;border-color:#3a8a58}
+.pbtn.practiced.act{background:#e4f5ea;border-color:#3a8a58;box-shadow:0 0 0 2px #4a9e6a55}
+.pbtn-title{font-size:16px;font-weight:600;margin-bottom:2px;line-height:1.25}
+.pbtn-composer{font-size:14px;color:var(--text3);font-style:italic;margin-bottom:7px;line-height:1.2}
+.pbtn-meta{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.spill{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;font-size:9px;font-family:'DM Mono',monospace;border:1px solid}
+.pdf-badge{display:inline-flex;align-items:center;padding:1px 6px;border-radius:3px;font-size:9px;background:#fff3e0;border:1px solid #e0a050;color:var(--gold);letter-spacing:1px;font-family:'DM Mono',monospace}
+.time-badge{font-family:'DM Mono',monospace;font-size:9px;color:var(--text4)}
+.right{width:400px;min-width:340px;display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
+.detail{flex:1;overflow-y:auto;padding:22px 26px}
+.detail::-webkit-scrollbar{width:3px}
+.detail::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.d-title{font-size:32px;font-weight:400;line-height:1.1;background:none;border:none;border-bottom:2px solid var(--border);color:var(--text);font-family:Arial,sans-serif;width:100%;outline:none;padding-bottom:3px;margin-bottom:3px;transition:border-color .2s}
+.d-title:focus{border-color:var(--accent)}
+.d-composer{font-size:16px;color:var(--text3);font-style:italic;margin-bottom:20px;background:none;border:none;border-bottom:1px solid var(--border);font-family:Arial,sans-serif;width:100%;outline:none;padding-bottom:2px}
+.sec-lbl{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--text4);margin-bottom:9px}
+.status-row{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:20px}
+.schip{background:#fff;border:1px solid var(--border);border-radius:20px;padding:5px 15px;cursor:pointer;font-family:Arial,sans-serif;font-size:15px;color:var(--text3);transition:all .15s}
+.schip:hover{border-color:var(--accent);color:var(--accent)}
+.div{border:none;border-top:1px solid var(--border);margin:18px 0}
+.score-block{background:#fff;border:1px solid var(--border);border-radius:8px;padding:14px 18px;margin-bottom:18px}
+.score-info{font-family:'DM Mono',monospace;font-size:10px;color:var(--text4);line-height:1.9;margin-bottom:10px}
+.score-info span{color:var(--gold)}
+.score-btns{display:flex;gap:7px;flex-wrap:wrap}
+.timer-block{background:#fff;border:1px solid var(--border);border-radius:8px;padding:16px 20px;margin-bottom:18px}
+.timer-display{font-family:'DM Mono',monospace;font-size:46px;font-weight:300;letter-spacing:3px;margin:8px 0;transition:color .3s;color:#d0c8c0}
+.timer-controls{display:flex;gap:7px;margin-top:10px;flex-wrap:wrap}
+.timer-info{font-family:'DM Mono',monospace;font-size:10px;color:var(--text4);margin-top:9px;line-height:1.9}
+.timer-info span{color:var(--gold)}
+.btn{font-family:Arial,sans-serif;font-size:15px;letter-spacing:.5px;padding:8px 18px;border-radius:5px;cursor:pointer;border:1px solid;transition:all .2s}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:#fff}.btn-primary:hover{background:#5a1515}
+.btn-blue{background:#e8f4ff;border-color:#1a4f7a55;color:var(--blue)}
+.btn-green{background:#e8f8ee;border-color:#1a5a3055;color:var(--green)}
+.btn-ghost{background:#fff;border-color:var(--border2);color:var(--text3)}.btn-ghost:hover{border-color:var(--red);color:var(--red)}
+.btn-neutral{background:#fff;border-color:var(--border);color:var(--text3)}.btn-neutral:hover{border-color:var(--gold);color:var(--gold)}
+.btn-del{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;background:none;border:none;color:var(--border2);cursor:pointer;transition:color .2s;padding:2px 0}.btn-del:hover{color:var(--red)}
+.notes{width:100%;min-height:95px;background:#fff;border:1px solid var(--border);border-radius:7px;padding:13px 15px;color:var(--text2);font-family:Arial,sans-serif;font-size:17px;line-height:1.7;resize:vertical;outline:none;transition:border-color .2s}
+.notes:focus{border-color:var(--gold)}
+.notes::placeholder{color:var(--border2)}
+.full-center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px}
+.signin-clef{font-size:56px;opacity:.15;color:var(--accent)}
+.full-center h2{font-weight:300;font-size:24px}
+.full-center p{font-family:'DM Mono',monospace;font-size:10px;color:var(--text4);letter-spacing:2px;text-transform:uppercase}
+.btn-signin{font-family:Arial,sans-serif;font-size:17px;padding:13px 34px;border-radius:7px;cursor:pointer;background:var(--accent);border:none;color:#fff;transition:all .2s;margin-top:4px}
+.btn-signin:hover{background:#5a1515;transform:translateY(-1px)}
+.empty-clef{font-size:44px;opacity:.15;color:var(--accent)}
+.empty-msg{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--text4)}
+.loading-msg{font-family:'DM Mono',monospace;font-size:10px;color:var(--text4);letter-spacing:3px;text-transform:uppercase}
+.overlay{position:fixed;inset:0;background:rgba(20,10,5,0.55);backdrop-filter:blur(5px);display:none;align-items:center;justify-content:center;z-index:500}
+.overlay.show{display:flex}
+.modal{background:#fff;border:1px solid var(--border);border-radius:14px;padding:28px;width:400px;box-shadow:0 16px 48px rgba(0,0,0,0.15);max-height:85vh;display:flex;flex-direction:column}
+.modal h2{font-weight:400;font-size:22px;margin-bottom:20px;flex-shrink:0}
+.fld{margin-bottom:14px}
+.fld label{display:block;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--text4);margin-bottom:6px}
+.fld input,.fld textarea{width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:5px;padding:9px 13px;color:var(--text);font-family:Arial,sans-serif;font-size:16px;outline:none;transition:border-color .2s}
+.fld input:focus,.fld textarea:focus{border-color:var(--gold)}
+.modal-btns{display:flex;gap:8px;margin-top:18px;flex-shrink:0}
+.modal-btns .btn{flex:1;text-align:center}
+.pdf-modal-inner{background:#fff;border:1px solid var(--border);border-radius:14px;padding:28px;width:500px;height:580px;box-shadow:0 16px 48px rgba(0,0,0,0.15);display:flex;flex-direction:column}
+.pdf-modal-inner h2{font-weight:400;font-size:22px;margin-bottom:6px;flex-shrink:0}
+.modal-sub{font-family:'DM Mono',monospace;font-size:10px;color:var(--text4);letter-spacing:2px;text-transform:uppercase;margin-bottom:16px;flex-shrink:0}
+.pdf-search{width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:5px;padding:9px 13px;color:var(--text);font-family:Arial,sans-serif;font-size:16px;outline:none;margin-bottom:12px;flex-shrink:0;transition:border-color .2s}
+.pdf-search:focus{border-color:var(--gold)}
+.pdf-list{overflow-y:auto;flex:1;border:1px solid var(--border);border-radius:7px;background:var(--bg2)}
+.pdf-list::-webkit-scrollbar{width:3px}
+.pdf-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.pdf-item{padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .15s;font-size:15px;line-height:1.3}
+.pdf-item:last-child{border-bottom:none}
+.pdf-item:hover{background:var(--bg3)}
+.pdf-item.selected{background:#fff8f0;color:var(--gold);font-weight:600}
+.pdf-item-name{font-weight:600;margin-bottom:2px}
+.pdf-item-path{font-family:'DM Mono',monospace;font-size:10px;color:var(--text4)}
+.pdf-loading-msg{padding:24px;text-align:center;font-family:'DM Mono',monospace;font-size:10px;color:var(--text4);letter-spacing:2px}
+#pdf-viewer{position:fixed;inset:0;background:#2a2420;z-index:400;display:none;flex-direction:column}
+#pdf-viewer.show{display:flex}
+.pdf-toolbar{display:flex;align-items:center;justify-content:space-between;padding:9px 20px;background:#1a1210;border-bottom:1px solid #3a2820;flex-shrink:0;gap:10px;flex-wrap:wrap}
+.pdf-toolbar-group{display:flex;align-items:center;gap:7px}
+.pdf-pages-label{font-family:'DM Mono',monospace;font-size:10px;color:#9a8070;letter-spacing:2px}
+.pdf-zoom-val{font-family:'DM Mono',monospace;font-size:10px;color:#e0c090;min-width:38px;text-align:center}
+.page-wrap{background:#fff;border-radius:4px;box-shadow:0 8px 36px rgba(0,0,0,0.7);overflow:hidden;flex-shrink:0;margin:0 7px}
+.pdf-loading{font-family:'DM Mono',monospace;font-size:11px;color:#6a5848;letter-spacing:3px;text-transform:uppercase;margin:auto;padding-top:60px}
+.pdf-spread{flex:1;overflow:auto;background:#1a110a;padding:24px 20px;position:relative;z-index:1;min-width:0}
+.pdf-body{display:flex;flex-direction:row;flex:1;overflow:hidden;min-height:0}
+.pdf-side{width:280px;min-width:280px;flex-shrink:0;background:#1a110a;border-left:1px solid #3a2820;overflow-y:auto;padding:14px;position:relative;z-index:200;pointer-events:all;isolation:isolate;display:block}
+.pdf-side::-webkit-scrollbar{width:3px}
+.pdf-side::-webkit-scrollbar-thumb{background:#3a2820;border-radius:2px}
+.pdf-side-section{margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid #2a1c14}
+.pdf-side-section:last-child{border-bottom:none}
+.pdf-side-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:#5a4838;margin-bottom:10px}
+.pdf-timer-display{font-family:'DM Mono',monospace;font-size:36px;font-weight:300;color:#c09070;letter-spacing:2px;line-height:1;margin-bottom:8px}
+.pdf-timer-info{font-family:'DM Mono',monospace;font-size:9px;color:#5a4838;letter-spacing:1px;margin-top:6px}
+.alarm-row{display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap}
+.alarm-lbl{font-family:'DM Mono',monospace;font-size:9px;color:#7a5848;letter-spacing:1px;min-width:40px}
+.alarm-input{width:60px;background:#2a1810;border:1px solid #5a3820;border-radius:4px;color:#c09070;font-family:'DM Mono',monospace;font-size:13px;padding:4px 7px;outline:none;text-align:center}
+.alarm-active{color:#6ade90!important;border-color:#3a8a58!important}
+.pdf-metro-bpm{font-family:'DM Mono',monospace;font-size:30px;font-weight:300;color:#c09070;line-height:1}
+.pdf-metro-unit{font-family:'DM Mono',monospace;font-size:10px;color:#5a4838}
+.pdf-metro-beat2{width:10px;height:10px;border-radius:50%;background:#3a2820;display:inline-block;transition:background .05s,transform .05s;margin-left:6px;vertical-align:middle}
+.pdf-metro-beat2.flash{background:#c9a030;transform:scale(1.5)}
+.pdf-metro-slider{width:100%;accent-color:#8b5e2a;margin:6px 0;display:block}
+.pdf-metro-row{display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-top:6px}
+.pdf-side-btn{background:#2a1810;border:1px solid #5a3820;color:#9a7858;font-size:11px;padding:4px 9px;border-radius:4px;cursor:pointer;font-family:'DM Mono',monospace}
+.pdf-side-btn:hover{background:#3a2218;color:#c09070}
+.pdf-side-btn.active{background:#1a3a20;border-color:#3a8a58;color:#6ade90}
+/* Card memo line */
+.card-memo{font-size:11px;color:var(--text4);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;font-style:italic;line-height:1.3}
+/* Card color tagging */
+.card-colors{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}
+.color-dot{width:14px;height:14px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform .1s,border-color .1s;flex-shrink:0}
+.color-dot:hover{transform:scale(1.3)}
+.color-dot.active{border-color:#fff;transform:scale(1.2)}
+.color-dot.clear{background:none;border:2px dashed #aaa;opacity:0.6}
+.pbtn.tagged-red{background:#fff0f0;border-color:#e05050}
+.pbtn.tagged-orange{background:#fff5ec;border-color:#e08030}
+.pbtn.tagged-yellow{background:#fffbe8;border-color:#c8a020}
+.pbtn.tagged-green{background:#f0faf0;border-color:#40a060}
+.pbtn.tagged-blue{background:#f0f4ff;border-color:#4060c0}
+.pbtn.tagged-purple{background:#f8f0ff;border-color:#8040c0}
+.pbtn.tagged-pink{background:#fff0f8;border-color:#c050a0}
+.pbtn.tagged-red.act{border-color:#e05050}
+.pbtn.tagged-orange.act{border-color:#e08030}
+.pbtn.tagged-yellow.act{border-color:#c8a020}
+.pbtn.tagged-green.act{border-color:#40a060}
+.pbtn.tagged-blue.act{border-color:#4060c0}
+.pbtn.tagged-purple.act{border-color:#8040c0}
+.pbtn.tagged-pink.act{border-color:#c050a0}
+/* Detail panel color row */
+.detail-color-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.detail-color-btn{width:24px;height:24px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:transform .1s,border-color .1s}
+.detail-color-btn:hover{transform:scale(1.2)}
+.detail-color-btn.active{border-color:#333;transform:scale(1.15)}
+.detail-color-btn.clear{background:none;border:2px dashed #aaa;width:22px;height:22px}
+/* Star rating */
+.stars{display:flex;gap:3px;margin-bottom:16px}
+.star{font-size:22px;cursor:pointer;color:var(--border2);transition:color .15s;line-height:1;background:none;border:none;padding:0}
+.star.on{color:#c9a030}
+.star:hover{color:#c9a030}
+/* Session log */
+.session-log{margin-top:10px}
+.session-entry{display:flex;justify-content:space-between;align-items:baseline;padding:7px 0;border-bottom:1px solid var(--border);font-size:14px;line-height:1.4}
+.session-entry:last-child{border-bottom:none}
+.session-date{font-family:'DM Mono',monospace;font-size:9px;color:var(--text4);white-space:nowrap;margin-right:10px}
+.session-dur{font-family:'DM Mono',monospace;font-size:11px;color:var(--gold);white-space:nowrap}
+.session-note{flex:1;color:var(--text2);font-style:italic;font-size:15px;margin:0 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.log-empty{font-family:'DM Mono',monospace;font-size:10px;color:var(--text4);letter-spacing:2px;text-align:center;padding:14px 0}
+/* Metronome */
+.metro-block{background:#fff;border:1px solid var(--border);border-radius:8px;padding:16px 20px;margin-bottom:18px}
+.metro-bpm{font-family:'DM Mono',monospace;font-size:42px;font-weight:300;letter-spacing:2px;color:var(--text2);line-height:1;margin:6px 0}
+.metro-bpm-unit{font-size:13px;color:var(--text4);letter-spacing:1px}
+.metro-beat{width:14px;height:14px;border-radius:50%;background:var(--border2);display:inline-block;transition:background .05s,transform .05s;margin-left:6px;vertical-align:middle}
+.metro-beat.flash{background:var(--accent);transform:scale(1.4)}
+.metro-controls{display:flex;gap:7px;align-items:center;margin-top:10px;flex-wrap:wrap}
+.metro-slider{flex:1;min-width:80px;accent-color:var(--accent)}
+.metro-tap{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px}
+/* Auto-link badge */
+.auto-link-row{display:flex;gap:7px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.auto-match{background:#fff8e8;border:1px solid #c9a96e55;border-radius:6px;padding:6px 12px;font-size:13px;flex:1}
+.auto-match-name{font-weight:600;color:var(--gold);margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.auto-match-file{font-family:'DM Mono',monospace;font-size:9px;color:var(--text4)}
+/* Session note input */
+.session-note-input{width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:5px;padding:7px 11px;color:var(--text2);font-family:Arial,sans-serif;font-size:15px;outline:none;margin-top:6px;transition:border-color .2s}
+.session-note-input:focus{border-color:var(--gold)}
+</style>
+</head>
+<body>
+
+<div id="pdf-viewer">
+  <div class="pdf-toolbar">
+    <div class="pdf-toolbar-group">
+      <button class="btn btn-ghost" style="background:#2a1810;border-color:#6a4030;color:#c09070;font-size:13px;padding:6px 14px" onclick="closePdf()">✕ Close Score</button>
+      <span class="pdf-pages-label" id="pdf-page-label">PAGE — / —</span>
+    </div>
+    <div class="pdf-toolbar-group">
+      <button class="btn" style="background:#2a1810;border-color:#c09070;color:#e0c090;font-size:13px;padding:6px 14px;border-radius:5px;cursor:pointer;border:1px solid" onclick="zoomOut()">− Zoom</button>
+      <span class="pdf-zoom-val" id="pdf-zoom-val">100%</span>
+      <button class="btn" style="background:#2a1810;border-color:#c09070;color:#e0c090;font-size:13px;padding:6px 14px;border-radius:5px;cursor:pointer;border:1px solid" onclick="zoomIn()">+ Zoom</button>
+    </div>
+    <div class="pdf-toolbar-group">
+      <button id="pdf-prev" class="btn" style="background:#2a1810;border-color:#6090b0;color:#90c0e0;font-size:13px;padding:6px 14px;border-radius:5px;cursor:pointer;border:1px solid" onclick="prevSpread()">◀ Prev</button>
+      <button id="pdf-next" class="btn" style="background:#2a1810;border-color:#6090b0;color:#90c0e0;font-size:13px;padding:6px 14px;border-radius:5px;cursor:pointer;border:1px solid" onclick="nextSpread()">Next ▶</button>
+    </div>
+    <!-- DRAWING TOOLBAR -->
+    <div class="pdf-toolbar-group" id="draw-toolbar" style="display:flex;gap:6px;align-items:center;border-left:1px solid #3a2820;padding-left:12px">
+      <button id="draw-pen-btn" onclick="setDrawTool('pen')" title="Pen" style="background:#3a2010;border:1px solid #6a4030;color:#c09070;font-size:14px;padding:4px 9px;border-radius:4px;cursor:pointer">✏️</button>
+      <button id="draw-hl-btn" onclick="setDrawTool('highlight')" title="Highlighter" style="background:#2a1810;border:1px solid #5a3820;color:#c09070;font-size:14px;padding:4px 9px;border-radius:4px;cursor:pointer">🖊</button>
+      <button id="draw-erase-btn" onclick="setDrawTool('eraser')" title="Eraser" style="background:#2a1810;border:1px solid #5a3820;color:#c09070;font-size:14px;padding:4px 9px;border-radius:4px;cursor:pointer">⬜</button>
+      <select id="draw-color" onchange="drawColor=this.value" title="Color" style="background:#2a1810;border:1px solid #5a3820;color:#c09070;font-size:12px;padding:4px 6px;border-radius:4px;font-family:'DM Mono',monospace">
+        <option value="#e03030">🔴 Red</option>
+        <option value="#2060e0">🔵 Blue</option>
+        <option value="#208040">🟢 Green</option>
+        <option value="#c07000">🟠 Orange</option>
+        <option value="#8020c0">🟣 Purple</option>
+        <option value="#101010">⚫ Black</option>
+      </select>
+      <select id="draw-width" onchange="drawWidth=+this.value" title="Width" style="background:#2a1810;border:1px solid #5a3820;color:#c09070;font-size:12px;padding:4px 6px;border-radius:4px;font-family:'DM Mono',monospace">
+        <option value="2">Thin</option>
+        <option value="4" selected>Medium</option>
+        <option value="8">Thick</option>
+        <option value="14">Bold</option>
+      </select>
+      <button onclick="clearAnnotations()" title="Clear all marks" style="background:#2a1810;border:1px solid #5a3820;color:#9a5848;font-size:11px;padding:4px 9px;border-radius:4px;cursor:pointer;font-family:'DM Mono',monospace">CLEAR</button>
+    </div>
+  </div>
+  <div class="pdf-body">
+    <div class="pdf-spread" id="pdf-spread"><div class="pdf-loading">LOADING SCORE…</div></div>
+    <div class="pdf-side" id="pdf-side">
+      <!-- TIMER -->
+      <div class="pdf-side-section">
+        <div class="pdf-side-label">Practice Timer</div>
+        <div class="pdf-timer-display" id="pdf-timer-display">00:00</div>
+        <div id="pdf-timer-controls"></div>
+        <div class="pdf-timer-info" id="pdf-timer-info"></div>
+        <input class="session-note-input" id="pdf-session-note" placeholder="Session note…" style="display:none;margin-top:8px;background:#2a1810;border-color:#5a3820;color:#c09070"/>
+      </div>
+      <!-- ALARMS -->
+      <div class="pdf-side-section" id="pdf-alarm-section"></div>
+      <!-- METRONOME -->
+      <div class="pdf-side-section">
+        <div class="pdf-side-label">Metronome</div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div><span class="pdf-metro-bpm" id="pdf-metro-bpm">80</span><span class="pdf-metro-unit">bpm</span></div>
+          <span class="pdf-metro-beat" id="pdf-metro-beat2"></span>
+        </div>
+        <input class="pdf-metro-slider" type="range" min="30" max="240" value="80" id="pdf-metro-slider" oninput="metroSetBpm(+this.value);document.getElementById('pdf-metro-bpm').textContent=metroBpm_val"/>
+        <div class="pdf-metro-row">
+          <button class="btn btn-ghost" onclick="metroBpm(-5)" style="background:#2a1810;border-color:#5a3820;color:#9a7858;font-size:11px;padding:3px 8px">−5</button>
+          <button class="btn btn-ghost" onclick="metroBpm(-1)" style="background:#2a1810;border-color:#5a3820;color:#9a7858;font-size:11px;padding:3px 8px">−1</button>
+          <button class="btn btn-ghost" onclick="metroBpm(+1)" style="background:#2a1810;border-color:#5a3820;color:#9a7858;font-size:11px;padding:3px 8px">+1</button>
+          <button class="btn btn-ghost" onclick="metroBpm(+5)" style="background:#2a1810;border-color:#5a3820;color:#9a7858;font-size:11px;padding:3px 8px">+5</button>
+        </div>
+        <div class="pdf-metro-row" style="margin-top:6px">
+          <button id="pdf-metro-btn" onclick="metroToggle()" style="background:#7a1f1f;border:1px solid #c04040;color:#fff;font-size:12px;padding:5px 14px;border-radius:4px;cursor:pointer">▶ Start</button>
+          <button onclick="metroTap()" style="background:#2a1810;border:1px solid #5a3820;color:#9a7858;font-size:11px;padding:5px 10px;border-radius:4px;cursor:pointer;font-family:'DM Mono',monospace;letter-spacing:1px">TAP</button>
+          <select id="pdf-metro-beats" onchange="metroBeats=+this.value" style="font-family:'DM Mono',monospace;font-size:10px;border:1px solid #5a3820;border-radius:4px;padding:4px 6px;background:#2a1810;color:#9a7858">
+            <option value="4">4/4</option><option value="3">3/4</option><option value="6">6/8</option><option value="2">2/4</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<header class="hdr">
+  <div class="hdr-left">
+    <div class="sup">Music Practice Portal · HomeBase</div>
+    <h1>My <em>Repertoire</em></h1>
+  </div>
+  <div class="hdr-right">
+    <div class="sync-msg" id="sync-msg"></div>
+    <div class="hdr-stats">
+      <div>Pieces <span id="stat-pieces">0</span></div>
+      <div>Sessions <span id="stat-sessions">0</span></div>
+      <div>Total time <span id="stat-time">0s</span></div>
+    </div>
+    <div class="auth-bar">
+      <span class="auth-dot off" id="auth-dot"></span>
+      <span class="auth-user" id="auth-user">Not signed in</span>
+      <button class="btn-signout" id="btn-signout" style="display:none" onclick="signOut()">Sign out</button>
+    </div>
+  </div>
+</header>
+
+<div class="tabs" id="tabs" style="display:none">
+  <button class="tab active" onclick="switchTab('practice')" id="tab-practice">Current Practice <span class="tab-count" id="tc-practice">0</span></button>
+  <button class="tab" onclick="switchTab('interleave')" id="tab-interleave">Interleave <span class="tab-count" id="tc-interleave">0</span></button>
+  <button class="tab" onclick="switchTab('eflat')" id="tab-eflat">E♭ Instruments <span class="tab-count" id="tc-eflat">0</span></button>
+  <button class="tab" onclick="switchTab('bflat')" id="tab-bflat">B♭ Instruments <span class="tab-count" id="tc-bflat">0</span></button>
+</div>
+
+<div class="main">
+  <div class="left">
+    <div class="left-toolbar">
+      <input class="search-box" id="search-box" placeholder="Search pieces…" oninput="renderPieceGrid()"/>
+      <button class="btn-add" id="btn-add-piece" onclick="openAddModal()" style="display:none">+ Add piece</button>
+      <button class="btn-add" id="btn-auto-link" onclick="autoLinkAll()" style="display:none;background:var(--green);font-size:13px;padding:6px 12px" title="Auto-link scores for all unlinked pieces">✨ Auto-Link All</button>
+    </div>
+    <div class="piece-grid-wrap" id="piece-grid-wrap">
+      <div class="full-center"><div class="loading-msg">Loading…</div></div>
+    </div>
+  </div>
+  <div class="right" id="right-panel">
+    <div class="full-center">
+      <div class="empty-clef">𝄞</div>
+      <div class="empty-msg">Select a piece to begin</div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD PIECE MODAL -->
+<div class="overlay" id="add-modal">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h2>Add a piece</h2>
+    <div class="fld"><label>Title *</label><input id="new-title" placeholder="e.g. Nocturne in E♭ major" onkeydown="if(event.key==='Enter')addPiece()"/></div>
+    <div class="fld"><label>Composer</label><input id="new-composer" placeholder="e.g. Frédéric Chopin"/></div>
+    <div class="fld"><label>Initial Notes / Goals</label><textarea id="new-notes" rows="3" placeholder="What do you want to focus on?" style="resize:none"></textarea></div>
+    <div class="modal-btns">
+      <button class="btn btn-ghost" onclick="closeAddModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="addPiece()">Add to Repertoire</button>
+    </div>
+  </div>
+</div>
+
+<!-- PDF PICKER MODAL -->
+<div class="overlay" id="pdf-modal">
+  <div class="pdf-modal-inner" onclick="event.stopPropagation()">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <h2 style="margin:0">Choose Score</h2>
+      <label style="background:#2a6e3a;color:#fff;font-size:12px;padding:6px 14px;border-radius:5px;cursor:pointer;font-family:'DM Mono',monospace;letter-spacing:1px;white-space:nowrap">
+        ↑ Upload PDF
+        <input type="file" accept=".pdf" style="display:none" onchange="uploadScorePdf(this)"/>
+      </label>
+    </div>
+    <div class="modal-sub">Select a PDF from your SharePoint files</div>
+    <div id="upload-progress" style="display:none;font-family:'DM Mono',monospace;font-size:10px;color:#4a9e6a;letter-spacing:2px;margin-bottom:8px;text-align:center">UPLOADING…</div>
+    <input class="pdf-search" id="pdf-search" placeholder="Search files…" oninput="filterPdfList()"/>
+    <div class="pdf-list" id="pdf-list"><div class="pdf-loading-msg">LOADING FILES…</div></div>
+    <div class="modal-btns" style="margin-top:14px">
+      <button class="btn btn-ghost" onclick="closePdfModal()">Cancel</button>
+      <button class="btn btn-primary" id="pdf-attach-btn" onclick="attachSelectedPdf()" disabled>Attach Score</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+// ── CONFIG ───────────────────────────────────────────────────────────────────
+const CFG={
+  clientId:'d069f3d2-23db-461b-9755-16420f84bce6',
+  tenantId:'c99253e2-27c0-4214-a9a2-4edc92f4473d',
+  siteHost:'tnws384.sharepoint.com',
+  sitePath:'/sites/HomeBase',
+  listName:'MusicPieces',
+  scopes:'https://graph.microsoft.com/Sites.ReadWrite.All https://graph.microsoft.com/Files.ReadWrite.All',
+  // SharePoint direct URL (bookmark this on any device):
+  // https://tnws384.sharepoint.com/sites/HomeBase/SiteAssets/music-practice.html
+};
+
+const SM={
+  'Not Started':{c:'#5a6878',g:'#f0f2f5',bc:'#5a687855',s:'○',order:0},
+  'Learning':   {c:'#7a5500',g:'#fff8e0',bc:'#c8900055',s:'◑',order:1},
+  'Polishing':  {c:'#1a4f7a',g:'#e8f4ff',bc:'#1a4f7a55',s:'◕',order:2},
+  'Ready':      {c:'#1a5a30',g:'#e8f8ee',bc:'#1a5a3055',s:'●',order:3},
+};
+const STATUSES=['Not Started','Learning','Polishing','Ready'];
+
+// ── STATE ────────────────────────────────────────────────────────────────────
+let token=null,userName=null,siteId=null;
+let pieces=[],selId=null,currentTab='practice';
+let timerInterval=null,timerRunning=false,elapsed=0;
+let pdfDoc=null,pdfSpread=1,pdfZoom=1.0,pdfTotal=0,pdfSinglePage=false;
+let allSiteFiles=[],selectedPdfFile=null;
+let saveTimers={};
+let _pdfPollTimer=null;
+
+// ── UTILS ────────────────────────────────────────────────────────────────────
+function recentlyPracticed(p){
+  const log=p.sessionLog||[];
+  if(!log.length)return false;
+  const last=log[log.length-1];
+  if(!last.date)return false;
+  // Try to parse stored date + check within 36 hours
+  try{
+    const d=new Date(last.date);
+    return(Date.now()-d.getTime())<36*60*60*1000;
+  }catch{return false;}
+}
+function hms(s){const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60;if(h>0)return`${h}h ${String(m).padStart(2,'0')}m`;if(m>0)return`${m}m ${String(sec).padStart(2,'0')}s`;return`${sec}s`;}
+function clockFmt(s){const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60;if(h>0)return`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;return`${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function syncMsg(msg,dur=3000){const el=document.getElementById('sync-msg');el.textContent=msg;el.style.opacity=1;if(dur)setTimeout(()=>{el.style.opacity=0},dur);}
+function cleanFileName(name){return name.replace(/^\d+/,'').replace(/--+/g,' - ').replace(/-/g,' ').replace(/\.pdf$/i,'').trim();}
+
+// ── AUTH ─────────────────────────────────────────────────────────────────────
+function getRedirectUri(){
+  // Strip query params and hash - works from localhost AND SharePoint hosting
+  const base=window.location.href.split('?')[0].split('#')[0];
+  // Remove SharePoint-appended suffixes like /music-practice.html?Web=1
+  return base;
+}
+function parseTokenFromHash(){
+  const hash=window.location.hash.substring(1);
+  if(!hash)return null;
+  const p=new URLSearchParams(hash);
+  const t=p.get('access_token');
+  if(!t)return null;
+  history.replaceState(null,'',window.location.pathname);
+  return t;
+}
+function getUserFromToken(t){
+  try{const p=JSON.parse(atob(t.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));return p.name||p.preferred_username||'Signed in';}
+  catch{return'Signed in';}
+}
+function isTokenExpired(t){
+  try{const p=JSON.parse(atob(t.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));return p.exp&&(p.exp*1000)<Date.now();}
+  catch{return true;}
+}
+function signIn(){
+  const redirectUri=getRedirectUri();
+  // If auth fails with AADSTS50011, add this URL to Azure App Registration → Authentication → Redirect URIs:
+  console.info('[Auth] Redirect URI being used:', redirectUri);
+  const p=new URLSearchParams({client_id:CFG.clientId,response_type:'token',response_mode:'fragment',redirect_uri:redirectUri,scope:CFG.scopes+' openid profile',nonce:Math.random().toString(36).slice(2)});
+  window.location.href=`https://login.microsoftonline.com/${CFG.tenantId}/oauth2/v2.0/authorize?${p}`;
+}
+function signOut(){
+  localStorage.removeItem('mpt_token');localStorage.removeItem('mpt_user');
+  window.location.href=`https://login.microsoftonline.com/${CFG.tenantId}/oauth2/v2.0/logout?post_logout_redirect_uri=${encodeURIComponent(getRedirectUri())}`;
+}
+
+// ── GRAPH ────────────────────────────────────────────────────────────────────
+async function gGet(url){
+  const r=await fetch(url,{headers:{Authorization:`Bearer ${token}`}});
+  if(!r.ok){const txt=await r.text();throw new Error(`${r.status}: ${txt.substring(0,200)}`);}
+  return r.json();
+}
+async function gPost(url,body){
+  const r=await fetch(url,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(!r.ok){const txt=await r.text();throw new Error(`${r.status}: ${txt.substring(0,200)}`);}
+  return r.json();
+}
+async function gPatch(url,body){
+  await fetch(url,{method:'PATCH',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify(body)});
+}
+async function gDelete(url){
+  await fetch(url,{method:'DELETE',headers:{Authorization:`Bearer ${token}`}});
+}
+
+// ── LOAD DATA ────────────────────────────────────────────────────────────────
+async function loadFromSharePoint(){
+  syncMsg('Connecting to SharePoint…',0);
+  document.getElementById('piece-grid-wrap').innerHTML='<div class="full-center"><div class="loading-msg">Loading your pieces…</div></div>';
+  try{
+    const site=await gGet(`https://graph.microsoft.com/v1.0/sites/${CFG.siteHost}:${CFG.sitePath}`);
+    siteId=site.id;
+    const data=await gGet(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${CFG.listName}/items?expand=fields&$top=500`);
+    pieces=(data.value||[]).map(item=>({
+      id:item.id,
+      title:item.fields.Title||'',
+      composer:item.fields.Composer||'',
+      status:item.fields.Status||'Not Started',
+      notes:item.fields.Notes||'',
+      totalSeconds:item.fields.TotalSeconds||0,
+      sessions:item.fields.Sessions||0,
+      pdfName:item.fields.PdfName||null,
+      pdfUrl:item.fields.PdfUrl||null,
+      pdfFileId:item.fields.PdfFileId||null,
+      cardColor:null, // loaded from localStorage below
+      ...(()=>{
+        const raw=item.fields.Notes||'';
+        const idx=raw.indexOf('\n\n__META__');
+        if(idx===-1)return{stars:0,sessionLog:[],notes:raw};
+        try{const m=JSON.parse(raw.slice(idx+10));return{stars:m.s||0,sessionLog:m.l||[],notes:raw.slice(0,idx)};}
+        catch{return{stars:0,sessionLog:[],notes:raw.slice(0,idx)};}
+      })(),
+    }));
+    syncMsg('Synced with SharePoint ✓');
+    loadCardColors();renderPieceGrid();updateStats();
+    // Load PDF files in background
+    loadSiteFiles();
+  }catch(e){
+    console.error('SharePoint error:',e);
+    if(e.message.includes('401')||e.message.includes('InvalidAuthentication')){
+      localStorage.removeItem('mpt_token');localStorage.removeItem('mpt_user');
+      token=null;updateAuthUI(false);
+      document.getElementById('right-panel').innerHTML='<div class="full-center"><div class="signin-clef">𝄞</div><h2>Session expired</h2><p>Please sign in again</p><button class="btn-signin" onclick="signIn()">Sign in with Microsoft</button></div>';
+      document.getElementById('piece-grid-wrap').innerHTML='';
+      syncMsg('Session expired',0);
+    } else {
+      syncMsg('Error: '+e.message.substring(0,60),0);
+    }
+  }
+}
+
+async function loadSiteFiles(){
+  try{
+    let all=[];
+    // Try Site Assets folder directly first (where your scores are stored)
+    const attempts=[
+      // Site Assets library items
+      ()=>gGet(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/Site Assets/items?expand=fields($select=FileLeafRef,FileRef)&$top=500`),
+      // Search entire site drive
+      ()=>gGet(`https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root/search(q='.pdf')?$top=500`),
+    ];
+
+    // Site Assets list — proven to work with 139 PDFs
+    try{
+      let url=`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/Site%20Assets/items?expand=fields&$top=500`;
+      while(url){
+        const data=await gGet(url);
+        const items=(data.value||[])
+          .filter(i=>i.fields&&i.fields.FileLeafRef&&i.fields.FileLeafRef.toLowerCase().endsWith('.pdf'))
+          .map(i=>({
+            id:i.id,
+            name:i.fields.FileLeafRef,
+            displayName:cleanFileName(i.fields.FileLeafRef),
+            webUrl:`https://${CFG.siteHost}${i.fields.FileRef||''}`,
+            downloadUrl:`https://${CFG.siteHost}${i.fields.FileRef||''}`,
+          }));
+        all=[...all,...items];
+        url=data['@odata.nextLink']||null;
+      }
+      console.log(`Site Assets: found ${all.length} PDFs`);
+      if(all.length>0){
+        allSiteFiles=all.sort((a,b)=>a.displayName.localeCompare(b.displayName));
+        console.log('PDF files loaded successfully!');
+        if(document.getElementById('pdf-modal').classList.contains('show'))filterPdfList();
+        return; // Success — skip drive search fallback
+      }
+    }catch(e1){
+      console.warn('Site Assets list failed:',e1.message);
+    }
+
+    // If Site Assets didn't work, search the whole drive
+    if(all.length===0){
+      try{
+        let url=`https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root/search(q='.pdf')?$top=500`;
+        while(url){
+          const data=await gGet(url);
+          const items=(data.value||[]).filter(i=>i.name&&i.name.toLowerCase().endsWith('.pdf'));
+          all=[...all,...items.map(i=>({
+            id:i.id,
+            name:i.name,
+            displayName:cleanFileName(i.name),
+            webUrl:i.webUrl||'',
+            downloadUrl:i['@microsoft.graph.downloadUrl']||i.webUrl||'',
+          }))];
+          url=data['@odata.nextLink']||null;
+        }
+        console.log(`Drive search: found ${all.length} PDFs`);
+      }catch(e2){console.warn('Drive search failed:',e2.message);}
+    }
+
+    allSiteFiles=all.sort((a,b)=>a.displayName.localeCompare(b.displayName));
+    console.log(`Total PDF files loaded: ${allSiteFiles.length}`);
+    if(document.getElementById('pdf-modal').classList.contains('show'))filterPdfList();
+  }catch(e){
+    console.error('Failed to load PDF files:',e.message);
+  }
+}
+
+// ── SHAREPOINT CRUD ──────────────────────────────────────────────────────────
+function spFields(p){
+  // Pack stars+sessionLog as a JSON trailer after a separator in Notes
+  const meta=JSON.stringify({s:p.stars||0,l:(p.sessionLog||[]).slice(-50)});
+  const notesWithMeta=(p.notes||'')+'\n\n__META__'+meta;
+  return{Title:p.title,Composer:p.composer||'',Status:p.status,Notes:notesWithMeta,TotalSeconds:p.totalSeconds||0,Sessions:p.sessions||0,PdfName:p.pdfName||'',PdfUrl:p.pdfUrl||''};
+}
+async function spCreate(p){
+  const r=await gPost(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${CFG.listName}/items`,{fields:spFields(p)});
+  console.log('[spCreate] response:',JSON.stringify(r).slice(0,300));
+  // SharePoint returns id as a string like "42"
+  return r.id||r.fields?.id||r.fields?.ID;
+}
+async function spUpdate(p){await gPatch(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${CFG.listName}/items/${p.id}/fields`,spFields(p));}
+async function spDelete(id){await gDelete(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${CFG.listName}/items/${id}`);}
+
+// ── AUTH UI ──────────────────────────────────────────────────────────────────
+function updateAuthUI(loggedIn){
+  document.getElementById('auth-dot').className='auth-dot'+(loggedIn?'':' off');
+  document.getElementById('auth-user').textContent=loggedIn?userName:'Not signed in';
+  document.getElementById('btn-signout').style.display=loggedIn?'':'none';
+  document.getElementById('btn-add-piece').style.display=loggedIn?'':'none';
+  document.getElementById('btn-auto-link').style.display=loggedIn?'':'none';
+  document.getElementById('tabs').style.display=loggedIn?'flex':'none';
+}
+
+// ── TABS ─────────────────────────────────────────────────────────────────────
+function switchTab(tab){
+  currentTab=tab;
+  ['practice','interleave','eflat','bflat'].forEach(t=>document.getElementById('tab-'+t).classList.toggle('active',t===tab));
+  renderPieceGrid();
+}
+
+function isInterleave(p){return p.status==='Interleave'||p.title.toLowerCase().includes('interleave');}
+function isEflat(p){return p.status==='E Flat';}
+function isBflat(p){return p.status==='B Flat';}
+function isPractice(p){return !isInterleave(p)&&!isEflat(p)&&!isBflat(p);}
+
+function sortKey(p){
+  return p.title
+    .replace(/^(LJS|VIT|BWV|Op|No)\s*[-–\.]\s*/gi,'')  // strip known prefixes
+    .replace(/^[A-Z]{2,5}\s*[-–]\s*/,'')                // strip any ALL-CAPS prefix
+    .replace(/^(The|A|An)\s+/i,'')                      // strip articles
+    .toLowerCase().trim();
+}
+function sortedPieces(list){
+  return [...list].sort((a,b)=>sortKey(a).localeCompare(sortKey(b)));
+}
+
+// ── RENDER GRID ──────────────────────────────────────────────────────────────
+function renderPieceGrid(){
+  const query=(document.getElementById('search-box')?.value||'').toLowerCase().trim();
+  const wrap=document.getElementById('piece-grid-wrap');
+  const practice=pieces.filter(p=>isPractice(p));
+  const interleave=pieces.filter(p=>isInterleave(p));
+  const eflat=pieces.filter(p=>isEflat(p));
+  const bflat=pieces.filter(p=>isBflat(p));
+  document.getElementById('tc-practice').textContent=practice.length;
+  document.getElementById('tc-interleave').textContent=interleave.length;
+  document.getElementById('tc-eflat').textContent=eflat.length;
+  document.getElementById('tc-bflat').textContent=bflat.length;
+  const listMap={practice,interleave,eflat,bflat};
+  const list=listMap[currentTab]||practice;
+  const filtered=sortedPieces(list).filter(p=>!query||p.title.toLowerCase().includes(query)||(p.composer||'').toLowerCase().includes(query));
+  if(!filtered.length){wrap.innerHTML='<div style="text-align:center;padding:32px;color:var(--text4);font-style:italic;font-size:16px">No pieces found</div>';return;}
+  if(currentTab!=='practice'){wrap.innerHTML=`<div class="piece-grid">${filtered.map(pieceCard).join('')}</div>`;return;}
+  const groups={};
+  filtered.forEach(p=>{if(!groups[p.status])groups[p.status]=[];groups[p.status].push(p);});
+  let html='';
+  STATUSES.forEach(s=>{
+    if(!groups[s])return;
+    const sm=SM[s];
+    html+=`<div class="group-header"><span class="group-dot" style="background:${sm.c}"></span>${s} <span style="opacity:.6">(${groups[s].length})</span><span class="group-line"></span></div>`;
+    html+=`<div class="piece-grid">${groups[s].map(pieceCard).join('')}</div>`;
+  });
+  wrap.innerHTML=html;
+}
+
+function pieceCard(p){
+  const sm=SM[p.status]||SM['Not Started'];
+  const hasPdf=!!(p.pdfUrl||p.pdfName);
+  const wasPracticed=recentlyPracticed(p);
+  const colorClass=p.cardColor?` tagged-${p.cardColor}`:'';
+  return`<button class="pbtn${selId===p.id?' act':''}${wasPracticed?' practiced':''}${colorClass}" onclick="selectPiece('${p.id}')">
+    <div class="pbtn-title">${esc(p.title)}</div>
+    ${p.composer?`<div class="pbtn-composer">${esc(p.composer)}</div>`:''}
+    ${(()=>{const n=(p.notes||'').replace(/\n\n__META__.*/,'').trim();return n?`<div class="card-memo" title="${esc(n)}">${esc(n.length>55?n.slice(0,55)+'…':n)}</div>`:''})()}
+    <div class="pbtn-meta">
+      <span class="spill" style="color:${sm.c};border-color:${sm.bc};background:${sm.g}">${sm.s} ${p.status}</span>
+      ${hasPdf?'<span class="pdf-badge">PDF</span>':''}
+      ${p.totalSeconds>0?`<span class="time-badge">${hms(p.totalSeconds)}</span>`:''}
+      ${p.stars>0?`<span style="font-size:10px;color:#c9a030;letter-spacing:-1px">${'★'.repeat(p.stars)}${'☆'.repeat(5-p.stars)}</span>`:''}
+      <div class="card-colors" onclick="event.stopPropagation()">
+        ${[['red','#e05050'],['orange','#e08030'],['yellow','#c8a020'],['green','#40a060'],['blue','#4060c0'],['purple','#8040c0'],['pink','#c050a0']].map(([name,hex])=>`<span class="color-dot${p.cardColor===name?' active':''}" style="background:${hex}" onclick="setCardColor('${p.id}','${name}')" title="${name}"></span>`).join('')}
+        <span class="color-dot clear" onclick="setCardColor('${p.id}',null)" title="Clear">✕</span>
+      </div>
+    </div>
+  </button>`;
+}
+
+function updateStats(){
+  document.getElementById('stat-pieces').textContent=pieces.length;
+  document.getElementById('stat-sessions').textContent=pieces.reduce((s,p)=>s+(p.sessions||0),0);
+  document.getElementById('stat-time').textContent=hms(pieces.reduce((s,p)=>s+(p.totalSeconds||0),0));
+}
+
+// ── DETAIL PANEL ─────────────────────────────────────────────────────────────
+function selectPiece(id){
+  if(metroInterval){clearInterval(metroInterval);metroInterval=null;metroBeat=0;
+    const btn=document.getElementById('metro-start-btn');
+    if(btn){btn.textContent='▶ Start';btn.className='btn btn-primary';btn.style.fontSize='13px';btn.style.padding='6px 16px';}}
+  if(id!==selId)discardTimer();
+  selId=id;
+  renderPieceGrid();
+  renderDetail();
+}
+
+function renderDetail(){
+  const p=pieces.find(x=>x.id===selId);
+  if(!p){
+    document.getElementById('right-panel').innerHTML='<div class="full-center"><div class="empty-clef">𝄞</div><div class="empty-msg">Select a piece to begin</div></div>';
+    return;
+  }
+  const hasPdf=!!(p.pdfUrl||p.pdfName);
+  const tc=timerRunning?'#8b5e2a':(elapsed>0?'#1a5f8a':'#d0c8c0');
+  const pdfDisplayName=p.pdfName?cleanFileName(p.pdfName):'';
+  const autoMatch=!hasPdf?findAutoMatch(p):null;
+
+  // Stars HTML
+  const starsHtml=`<div class="stars">${[1,2,3,4,5].map(n=>`<button class="star${(p.stars||0)>=n?' on':''}" onclick="setStars(${n})" title="${n} star${n>1?'s':''}">${(p.stars||0)>=n?'★':'☆'}</button>`).join('')}<span style="font-family:var(--dm);font-size:9px;color:var(--text4);letter-spacing:2px;margin-left:8px;align-self:center">${p.stars?['','LOW PRIORITY','','MEDIUM','','HIGH PRIORITY'][p.stars]||'':''}</span></div>`;
+
+  // Session log HTML (last 5)
+  const log=(p.sessionLog||[]).slice(-5).reverse();
+  const logHtml=log.length?log.map(e=>`<div class="session-entry"><span class="session-date">${e.dateDisplay||e.date||''}</span><span class="session-note">${esc(e.note||'')}</span><span class="session-dur">${e.dur||''}</span></div>`).join(''):'<div class="log-empty">NO SESSIONS YET</div>';
+
+  document.getElementById('right-panel').innerHTML=`<div class="detail">
+    <input class="d-title" value="${esc(p.title)}" placeholder="Title" oninput="updField('title',this.value)"/>
+    <input class="d-composer" value="${esc(p.composer)}" placeholder="Composer" oninput="updField('composer',this.value)"/>
+    <div class="sec-lbl">Priority</div>
+    ${starsHtml}
+    <div class="sec-lbl">Card Color <span style="font-family:'DM Mono',monospace;font-size:9px;color:var(--text4)">(clears in 24h)</span></div>
+    <div class="detail-color-row">
+      ${[['red','#e05050'],['orange','#e08030'],['yellow','#c8a020'],['green','#40a060'],['blue','#4060c0'],['purple','#8040c0'],['pink','#c050a0']].map(([name,hex])=>`<button class="detail-color-btn${p.cardColor===name?' active':''}" style="background:${hex}" onclick="setCardColor('${p.id}','${name}')" title="${name}"></button>`).join('')}
+      <button class="detail-color-btn clear" onclick="setCardColor('${p.id}',null)" title="Clear color" style="font-size:11px;line-height:1;padding:0;display:flex;align-items:center;justify-content:center">✕</button>
+    </div>
+    <div class="sec-lbl">Progress Status</div>
+    <div class="status-row">${STATUSES.map(s=>{const sm=SM[s],act=p.status===s;return`<button class="schip" style="${act?`border-color:${sm.c};background:${sm.g};color:${sm.c};font-weight:600`:''}" onclick="updStatus('${s}')">${sm.s} ${s}</button>`;}).join('')}</div>
+    <hr class="div"/>
+    <div class="sec-lbl">Sheet Music Score</div>
+    <div class="score-block">
+      ${autoMatch?`<div class="auto-link-row"><div class="auto-match"><div class="auto-match-name">✨ ${esc(autoMatch.displayName)}</div><div class="auto-match-file">${esc(autoMatch.name)}</div></div><button class="btn btn-green" style="font-size:12px;padding:5px 12px;white-space:nowrap" onclick="autoLinkPdf()">Auto-Link ↗</button></div>`:''}
+      <div class="score-info">${hasPdf?`Linked: <span>${esc(pdfDisplayName||p.pdfName)}</span>`:'No score linked yet'}</div>
+      <div class="score-btns">
+        ${hasPdf?`<button class="btn btn-primary" onclick="openPdf()" style="font-size:13px;padding:6px 14px">𝄞 Open Score</button>`:''}
+        <button class="btn btn-neutral" onclick="openPdfModal()" style="font-size:13px;padding:6px 12px">${hasPdf?'Change Score':'📎 Link Score'}</button>
+        ${hasPdf?`<button class="btn btn-ghost" onclick="unlinkPdf()" style="font-size:13px;padding:6px 10px">Unlink</button>`:''}
+      </div>
+    </div>
+    <hr class="div"/>
+    <div class="sec-lbl">Practice Timer</div>
+    <div class="timer-block">
+      <div class="timer-display" id="timer-display" style="color:${tc}">${clockFmt(elapsed)}</div>
+      <div class="timer-controls" id="timer-controls"></div>
+      <div class="timer-info">Total: <span>${hms(p.totalSeconds||0)}</span> &nbsp;·&nbsp; Sessions: <span>${p.sessions||0}</span></div>
+      <input class="session-note-input" id="session-note-input" placeholder="Session note (optional — saved when you save timer)" value="" style="display:${elapsed>0?'block':'none'}"/>
+    </div>
+    <hr class="div"/>
+    <div class="sec-lbl">Metronome</div>
+    <div class="metro-block" id="metro-block">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div><span class="metro-bpm" id="metro-bpm">80</span><span class="metro-bpm-unit">bpm</span></div>
+        <span class="metro-beat" id="metro-beat"></span>
+      </div>
+      <div class="metro-controls">
+        <button class="btn btn-ghost" style="font-size:12px;padding:4px 10px" onclick="metroBpm(-5)">−5</button>
+        <button class="btn btn-ghost" style="font-size:12px;padding:4px 10px" onclick="metroBpm(-1)">−1</button>
+        <input class="metro-slider" type="range" min="30" max="240" value="80" id="metro-slider" oninput="metroSetBpm(+this.value)"/>
+        <button class="btn btn-ghost" style="font-size:12px;padding:4px 10px" onclick="metroBpm(+1)">+1</button>
+        <button class="btn btn-ghost" style="font-size:12px;padding:4px 10px" onclick="metroBpm(+5)">+5</button>
+      </div>
+      <div class="metro-controls" style="margin-top:6px">
+        <button class="btn btn-primary" id="metro-start-btn" onclick="metroToggle()" style="font-size:13px;padding:6px 16px">▶ Start</button>
+        <button class="btn btn-neutral metro-tap" onclick="metroTap()" style="font-size:12px;padding:6px 14px">TAP</button>
+        <select id="metro-beats" onchange="metroBeats=+this.value" style="font-family:'DM Mono',monospace;font-size:10px;border:1px solid var(--border);border-radius:5px;padding:4px 8px;background:var(--bg2);color:var(--text3)">
+          <option value="4">4/4</option><option value="3">3/4</option><option value="6">6/8</option><option value="2">2/4</option>
+        </select>
+      </div>
+    </div>
+    <hr class="div"/>
+    <div class="sec-lbl">Practice Notes & Goals</div>
+    <textarea class="notes" placeholder="Goals, trouble spots, reminders…" oninput="updField('notes',this.value)">${esc(p.notes)}</textarea>
+    <hr class="div"/>
+    <div class="sec-lbl">Session History</div>
+    <div class="session-log">${logHtml}</div>
+    <hr class="div"/>
+    <button class="btn-del" onclick="delPiece()">Remove from repertoire</button>
+  </div>`;
+  renderTimerControls();
+  // restore metronome bpm display
+  const sl=document.getElementById('metro-slider');
+  if(sl){sl.value=metroBpm_val;document.getElementById('metro-bpm').textContent=metroBpm_val;}
+}
+
+function renderTimerControls(){
+  const el=document.getElementById('timer-controls');if(!el)return;
+  const ni=document.getElementById('session-note-input');
+  if(!timerRunning&&elapsed===0){
+    el.innerHTML=`<button class="btn btn-primary" onclick="startTimer()">▶ Start Session</button>`;
+    if(ni)ni.style.display='none';
+  } else if(timerRunning){
+    el.innerHTML=`<button class="btn btn-blue" onclick="pauseTimer()">⏸ Pause</button><button class="btn btn-ghost" onclick="resetTimer()" style="font-size:12px;padding:5px 10px">↺ Reset</button>`;
+    if(ni)ni.style.display='block';
+  } else {
+    el.innerHTML=`<button class="btn btn-primary" onclick="startTimer()">▶ Resume</button><button class="btn btn-green" onclick="saveTimer()">✓ Save — ${hms(elapsed)}</button><button class="btn btn-ghost" onclick="resetTimer()">↺ Reset</button>`;
+    if(ni)ni.style.display='block';
+  }
+}
+
+function updField(field,value){
+  const p=pieces.find(x=>x.id===selId);if(!p)return;
+  p[field]=value;
+  clearTimeout(saveTimers[selId]);
+  saveTimers[selId]=setTimeout(()=>{if(token&&siteId)spUpdate(p).catch(console.error);},1200);
+  if(field==='title'||field==='composer')renderPieceGrid();
+}
+
+function updStatus(status){
+  const p=pieces.find(x=>x.id===selId);if(!p)return;
+  p.status=status;
+  if(token&&siteId)spUpdate(p).catch(console.error);
+  renderPieceGrid();renderDetail();
+}
+
+async function addPiece(){
+  const title=document.getElementById('new-title').value.trim();
+  if(!title){document.getElementById('new-title').focus();return;}
+  const p={id:'tmp-'+Date.now(),title,composer:document.getElementById('new-composer').value.trim(),notes:document.getElementById('new-notes').value.trim(),status:'Not Started',totalSeconds:0,sessions:0,pdfName:null,pdfUrl:null,pdfFileId:null,stars:0,sessionLog:[]};
+  pieces.push(p);closeAddModal();selId=p.id;renderPieceGrid();renderDetail();updateStats();
+  if(token&&siteId){
+    try{
+      syncMsg('Saving…',0);
+      const newId=await spCreate(p);
+      if(!newId)throw new Error('No ID returned from SharePoint');
+      p.id=newId;selId=newId;renderPieceGrid();
+      syncMsg('✓ Saved to SharePoint');
+      console.log('[addPiece] saved with id:',newId);
+    }catch(e){
+      console.error('[addPiece] FAILED:',e);
+      // Show persistent red error in header
+      const el=document.getElementById('sync-msg');
+      if(el){el.textContent='SAVE FAILED: '+e.message.slice(0,60);el.style.opacity=1;el.style.color='#ef9070';}
+      alert('Could not save to SharePoint:\n'+e.message+'\n\nThe piece is shown locally but will disappear on refresh.');
+    }
+  } else {
+    syncMsg('Not signed in — not saved',5000);
+    alert('You are not signed in. Please sign in to save pieces to SharePoint.');
+  }
+}
+
+async function delPiece(){
+  const p=pieces.find(x=>x.id===selId);if(!p)return;
+  if(!confirm(`Remove "${p.title}"?`))return;
+  discardTimer();const id=p.id;
+  pieces=pieces.filter(x=>x.id!==id);selId=null;
+  renderPieceGrid();
+  document.getElementById('right-panel').innerHTML='<div class="full-center"><div class="empty-clef">𝄞</div><div class="empty-msg">Select a piece to begin</div></div>';
+  updateStats();
+  if(token&&siteId)spDelete(id).catch(console.error);
+}
+
+function openAddModal(){document.getElementById('add-modal').classList.add('show');document.getElementById('new-title').value='';document.getElementById('new-composer').value='';document.getElementById('new-notes').value='';setTimeout(()=>document.getElementById('new-title').focus(),50);}
+function closeAddModal(){document.getElementById('add-modal').classList.remove('show');}
+document.getElementById('add-modal').addEventListener('click',function(e){if(e.target===this)closeAddModal();});
+
+// ── TIMER ────────────────────────────────────────────────────────────────────
+function startTimer(){
+  if(timerRunning)return;
+  timerRunning=true;
+  clearInterval(timerInterval);
+  timerInterval=setInterval(()=>{
+    elapsed++;
+    const d=document.getElementById('timer-display');
+    if(d){d.textContent=clockFmt(elapsed);d.style.color='#8b5e2a';}
+    const pd=document.getElementById('pdf-timer-display');
+    if(pd)pd.textContent=clockFmt(elapsed);
+    checkAlarms();
+    syncPdfSide();
+  },1000);
+  renderTimerControls();
+  syncPdfSide();
+}
+function pauseTimer(){timerRunning=false;clearInterval(timerInterval);const d=document.getElementById('timer-display');if(d)d.style.color='#1a5f8a';renderTimerControls();}
+function saveTimer(){
+  const p=pieces.find(x=>x.id===selId);if(!p)return;
+  const dur=elapsed;
+  p.totalSeconds=(p.totalSeconds||0)+dur;
+  p.sessions=(p.sessions||0)+1;
+  // Save session log entry
+  const noteEl=document.getElementById('session-note-input')||document.getElementById('pdf-session-note');
+  const noteVal=noteEl?noteEl.value.trim():'';
+  const now=new Date();
+  const entry={date:now.toISOString(),dateDisplay:now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),dur:hms(dur),note:noteVal};
+  if(!p.sessionLog)p.sessionLog=[];
+  p.sessionLog.push(entry);
+  timerRunning=false;clearInterval(timerInterval);elapsed=0;
+  if(token&&siteId)spUpdate(p).catch(console.error);
+  updateStats();renderDetail();
+}
+function discardTimer(){timerRunning=false;clearInterval(timerInterval);timerInterval=null;elapsed=0;renderDetail();syncPdfSide();}
+function resetTimer(){
+  if(timerRunning){clearInterval(timerInterval);timerInterval=null;timerRunning=false;}
+  elapsed=0;
+  const d=document.getElementById('timer-display');if(d)d.textContent=clockFmt(0);
+  const pd=document.getElementById('pdf-timer-display');if(pd)pd.textContent=clockFmt(0);
+  renderTimerControls();syncPdfSide();
+}
+
+// ── PDF PICKER ───────────────────────────────────────────────────────────────
+function openPdfModal(){
+  selectedPdfFile=null;
+  document.getElementById('pdf-attach-btn').disabled=true;
+  const p=pieces.find(x=>x.id===selId);
+  // Strip common prefixes/suffixes then take just the first meaningful word or two
+  const autoQuery=p?(()=>{
+    const cleaned=p.title
+      .replace(/^LJS\s*[-–]\s*/i,'')         // "LJS - " prefix
+      .replace(/^[A-Z]{2,4}\s*[-–]\s*/,'')   // other short prefixes like "BWV - "
+      .replace(/\s*\(.*?\)\s*/g,' ')          // parentheticals
+      .replace(/\s*[-–]\s*Two\s*Page.*/i,'')  // "- Two Page" suffix
+      .replace(/\s*[-–]\s*Score.*/i,'')       // "- Score" suffix
+      .trim();
+    // Take first word only (most reliable for search matching)
+    const words=cleaned.split(/\s+/).filter(Boolean);
+    return words.slice(0,1).join(' ');
+  })():'';
+  document.getElementById('pdf-search').value=autoQuery;
+  document.getElementById('pdf-modal').classList.add('show');
+  filterPdfList();
+}
+function closePdfModal(){clearTimeout(_pdfPollTimer);document.getElementById('pdf-modal').classList.remove('show');}
+document.getElementById('pdf-modal').addEventListener('click',function(e){if(e.target===this)closePdfModal();});
+
+function filterPdfList(){renderPdfList(document.getElementById('pdf-search').value.toLowerCase());}
+
+function renderPdfList(query){
+  const el=document.getElementById('pdf-list');if(!el)return;
+  if(!allSiteFiles.length){
+    el.innerHTML='<div class="pdf-loading-msg">LOADING FILES FROM SHAREPOINT…</div>';
+    clearTimeout(_pdfPollTimer);
+    _pdfPollTimer=setTimeout(()=>renderPdfList(query),600);
+    return;
+  }
+  clearTimeout(_pdfPollTimer);
+  const filtered=allSiteFiles.filter(f=>{
+    if(!query)return true;
+    const haystack=(f.displayName+' '+f.name).toLowerCase();
+    // Match if any word in the query is a prefix of any word in the filename
+    const qwords=query.split(/\s+/).filter(Boolean);
+    return qwords.every(qw=>haystack.includes(qw)||
+      haystack.split(/[\s\-_\.]+/).some(hw=>hw.startsWith(qw)));
+  });
+  if(!filtered.length){el.innerHTML=`<div class="pdf-loading-msg">NO FILES FOUND<br><br><small style="font-size:10px;opacity:.6">Try a shorter search term</small></div>`;return;}
+  el.innerHTML=filtered.map(f=>`<div class="pdf-item${selectedPdfFile&&selectedPdfFile.id===f.id?' selected':''}" onclick="selectPdfFile('${f.id}')"><div class="pdf-item-name">${esc(f.displayName)}</div><div class="pdf-item-path">${esc(f.name)}</div></div>`).join('');
+}
+
+function selectPdfFile(id){
+  selectedPdfFile=allSiteFiles.find(f=>f.id===id)||null;
+  document.getElementById('pdf-attach-btn').disabled=!selectedPdfFile;
+  filterPdfList();
+}
+
+async function attachSelectedPdf(){
+  if(!selectedPdfFile)return;
+  const p=pieces.find(x=>x.id===selId);if(!p)return;
+  p.pdfName=selectedPdfFile.name;
+  p.pdfUrl=selectedPdfFile.downloadUrl||selectedPdfFile.webUrl;
+  p.pdfFileId=selectedPdfFile.id||null;
+  closePdfModal();
+  if(token&&siteId)spUpdate(p).catch(console.error);
+  renderPieceGrid();renderDetail();
+  syncMsg('Score linked ✓');
+}
+
+function unlinkPdf(){
+  const p=pieces.find(x=>x.id===selId);if(!p)return;
+  p.pdfName=null;p.pdfUrl=null;p.pdfFileId=null;
+  if(token&&siteId)spUpdate(p).catch(console.error);
+  renderPieceGrid();renderDetail();
+}
+
+// ── PDF VIEWER ───────────────────────────────────────────────────────────────
+async function openPdf(){
+  const p=pieces.find(x=>x.id===selId);if(!p||!p.pdfUrl)return;
+  loadAnnotationsFromStorage();
+  document.getElementById('pdf-viewer').classList.add('show');
+  document.getElementById('pdf-spread').innerHTML='<div class="pdf-loading">LOADING SCORE…</div>';
+  syncPdfSide(); // populate timer controls immediately
+  pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  try{
+    let buf=null;
+
+    // CONFIRMED WORKING (via diagnostics): expand driveItem from list item ID
+    // gets a pre-signed downloadUrl that can be fetched with no auth header (no CORS issue)
+    if(!buf&&p.pdfFileId&&siteId){
+      try{
+        const item=await gGet(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/Site%20Assets/items/${p.pdfFileId}?expand=driveItem($select=id,@microsoft.graph.downloadUrl)`);
+        const dlUrl=item.driveItem&&item.driveItem['@microsoft.graph.downloadUrl'];
+        if(dlUrl){const r=await fetch(dlUrl);if(r.ok)buf=await r.arrayBuffer();}
+      }catch(e1){console.warn('[PDF] M1 failed:',e1.message);}
+    }
+
+    // Fallback: search the Site Assets drive by filename
+    if(!buf&&p.pdfName&&siteId){
+      try{
+        const drives=await gGet(`https://graph.microsoft.com/v1.0/sites/${siteId}/drives`);
+        const sasDrive=(drives.value||[]).find(d=>d.name==='Site Assets'||d.name==='SiteAssets');
+        if(sasDrive){
+          const results=await gGet(`https://graph.microsoft.com/v1.0/drives/${sasDrive.id}/root/search(q='${encodeURIComponent(p.pdfName)}')?$select=id,name,@microsoft.graph.downloadUrl&$top=5`);
+          const match=(results.value||[]).find(i=>i.name===p.pdfName)||results.value?.[0];
+          const dlUrl=match&&match['@microsoft.graph.downloadUrl'];
+          if(dlUrl){const r=await fetch(dlUrl);if(r.ok)buf=await r.arrayBuffer();}
+        }
+      }catch(e2){console.warn('[PDF] M2 failed:',e2.message);}
+    }
+
+    if(!buf)throw new Error('All methods failed');
+    pdfDoc=await pdfjsLib.getDocument({data:buf}).promise;
+    pdfTotal=pdfDoc.numPages;pdfSpread=1;pdfZoom=1.0;
+    // Check if pages are already wide (landscape = already two-page spread)
+    const firstPage=await pdfDoc.getPage(1);
+    const vp0=firstPage.getViewport({scale:1});
+    pdfSinglePage=(vp0.width>vp0.height*1.2); // landscape = show one page at a time
+    await renderSpread();
+  }catch(e){
+    document.getElementById('pdf-spread').innerHTML=`<div class="pdf-loading" style="color:#ef9070;text-align:center;line-height:2.2">${e.message}<br><br><a href="${p.pdfUrl}" target="_blank" style="color:#90c0e0;font-size:14px;text-decoration:underline">Open in SharePoint ↗</a><br><br><button onclick="diagnosePdf()" style="margin-top:8px;background:#3a2820;border:1px solid #c09070;color:#e0c090;padding:8px 18px;border-radius:5px;cursor:pointer;font-size:13px">🔍 Run Diagnostics</button><div id="diag-out" style="margin-top:14px;text-align:left;font-size:11px;color:#a09080;max-width:600px;word-break:break-all;line-height:1.8"></div></div>`;
+  }
+}
+
+async function diagnosePdf(){
+  const p=pieces.find(x=>x.id===selId);if(!p)return;
+  const out=document.getElementById('diag-out');
+  if(!out)return;
+  out.innerHTML='Running diagnostics…<br>';
+  const log=msg=>{out.innerHTML+=msg+'<br>';};
+
+  log('pdfName: '+p.pdfName);
+  log('pdfUrl: '+p.pdfUrl);
+  log('pdfFileId: '+p.pdfFileId);
+  log('siteId: '+siteId);
+
+  // Test A: resolve by URL path
+  try{
+    const urlObj=new URL(p.pdfUrl);
+    const path=urlObj.pathname;
+    log('<br>Test A — drive/root:'+path);
+    const item=await gGet(`https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root:${path}?select=id,name,webUrl,@microsoft.graph.downloadUrl`);
+    log('→ id: '+item.id);
+    log('→ name: '+item.name);
+    log('→ downloadUrl present: '+(!!item['@microsoft.graph.downloadUrl']));
+    if(item['@microsoft.graph.downloadUrl']){
+      const r=await fetch(item['@microsoft.graph.downloadUrl']);
+      log('→ blob fetch status: '+r.status+' type: '+r.headers.get('content-type'));
+    }
+  }catch(e){log('→ FAILED: '+e.message);}
+
+  // Test B: Site Assets library drive
+  try{
+    log('<br>Test B — Site Assets drive root');
+    const drives=await gGet(`https://graph.microsoft.com/v1.0/sites/${siteId}/drives`);
+    const driveNames=(drives.value||[]).map(d=>d.name+'('+d.id+')').join(', ');
+    log('→ drives: '+driveNames);
+    const sasDrive=(drives.value||[]).find(d=>d.name==='Site Assets'||d.name==='SiteAssets');
+    if(sasDrive){
+      log('→ Site Assets drive id: '+sasDrive.id);
+      const fname=p.pdfName;
+      const results=await gGet(`https://graph.microsoft.com/v1.0/drives/${sasDrive.id}/root/search(q='${encodeURIComponent(fname)}')?$select=id,name,@microsoft.graph.downloadUrl&$top=3`);
+      (results.value||[]).forEach(i=>log('  match: '+i.name+' dl:'+!!i['@microsoft.graph.downloadUrl']));
+    }
+  }catch(e){log('→ FAILED: '+e.message);}
+
+  // Test C: list item with driveItem expand
+  try{
+    log('<br>Test C — list item '+p.id+' with driveItem expand');
+    const item=await gGet(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/Site%20Assets/items/${p.pdfFileId}?expand=driveItem($select=id,@microsoft.graph.downloadUrl)`);
+    const di=item.driveItem;
+    log('→ driveItem id: '+(di&&di.id));
+    log('→ downloadUrl: '+(di&&!!di['@microsoft.graph.downloadUrl']));
+    if(di&&di['@microsoft.graph.downloadUrl']){
+      const r=await fetch(di['@microsoft.graph.downloadUrl']);
+      log('→ blob fetch: '+r.status);
+    }
+  }catch(e){log('→ FAILED: '+e.message);}
+}
+
+function closePdf(){document.getElementById('pdf-viewer').classList.remove('show');}
+
+async function renderSpread(){
+  const container=document.getElementById('pdf-spread');
+  container.innerHTML='';
+  container.scrollTop=0;
+  document.getElementById('pdf-zoom-val').textContent=Math.round(pdfZoom*100)+'%';
+  const spreadEnd=(!pdfSinglePage&&pdfSpread+1<=pdfTotal)?pdfSpread+1:pdfSpread;
+  const lbl=spreadEnd>pdfSpread?`PAGES ${pdfSpread}–${spreadEnd} / ${pdfTotal}`:`PAGE ${pdfSpread} / ${pdfTotal}`;
+  document.getElementById('pdf-page-label').textContent=lbl;
+  document.getElementById('pdf-prev').disabled=pdfSpread<=1;
+  document.getElementById('pdf-next').disabled=pdfSpread>=pdfTotal;
+  const row=document.createElement('div');
+  row.style.cssText='display:flex;flex-wrap:nowrap;align-items:flex-start;gap:14px;margin:0 auto;width:fit-content';
+  container.appendChild(row);
+  async function renderOne(n){
+    const wrap=document.createElement('div');
+    wrap.className='page-wrap';
+    wrap.style.position='relative';
+    const canvas=document.createElement('canvas');
+    const page=await pdfDoc.getPage(n);
+    const vp=page.getViewport({scale:pdfZoom*1.6});
+    canvas.width=vp.width;canvas.height=vp.height;
+    await page.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;
+    // Annotation overlay canvas
+    const overlay=document.createElement('canvas');
+    overlay.width=vp.width;overlay.height=vp.height;
+    overlay.style.cssText=`position:absolute;top:0;left:0;cursor:crosshair;touch-action:none;pointer-events:none`;
+    overlay.dataset.page=n;
+    // Only enable pointer events on the overlay when mouse is over the score page
+    wrap.addEventListener('mouseenter',()=>{overlay.style.pointerEvents='auto';});
+    wrap.addEventListener('mouseleave',()=>{overlay.style.pointerEvents='none';});
+    setupDrawing(overlay);
+    // Restore saved annotations
+    restoreAnnotations(overlay,n);
+    wrap.appendChild(canvas);
+    wrap.appendChild(overlay);
+    row.appendChild(wrap);
+  }
+  await renderOne(pdfSpread);
+  if(!pdfSinglePage&&pdfSpread+1<=pdfTotal)await renderOne(pdfSpread+1);
+  syncPdfSide();
+}
+async function prevSpread(){
+  if(pdfSpread>1){pdfSpread=Math.max(1,pdfSpread-(pdfSinglePage?1:2));await renderSpread();}
+}
+async function nextSpread(){
+  if(pdfSpread<pdfTotal){pdfSpread+=pdfSinglePage?1:2;if(pdfSpread>pdfTotal)pdfSpread=pdfTotal;await renderSpread();}
+}
+async function zoomIn(){pdfZoom=Math.min(2.5,pdfZoom+0.15);await renderSpread();}
+async function zoomOut(){pdfZoom=Math.max(0.5,pdfZoom-0.15);await renderSpread();}
+
+// ── BOOT ─────────────────────────────────────────────────────────────────────
+(function(){
+  const hashToken=parseTokenFromHash();
+  if(hashToken){
+    token=hashToken;userName=getUserFromToken(token);
+    localStorage.setItem('mpt_token',token);localStorage.setItem('mpt_user',userName);
+  } else {
+    token=localStorage.getItem('mpt_token');
+    userName=localStorage.getItem('mpt_user');
+  }
+  if(token&&!isTokenExpired(token)){
+    updateAuthUI(true);
+    loadFromSharePoint();
+  } else {
+    localStorage.removeItem('mpt_token');localStorage.removeItem('mpt_user');
+    token=null;userName=null;updateAuthUI(false);
+    document.getElementById('right-panel').innerHTML='<div class="full-center"><div class="signin-clef">𝄞</div><h2>Music Practice Studio</h2><p>Sign in to load your pieces from SharePoint</p><button class="btn-signin" onclick="signIn()">Sign in with Microsoft</button></div>';
+    document.getElementById('piece-grid-wrap').innerHTML='';
+  }
+})();
+
+// ── CARD COLORS ──────────────────────────────────────────────────────────────
+const COLOR_TTL = 24*60*60*1000; // 24 hours in ms
+
+function loadCardColors(){
+  try{
+    const raw=localStorage.getItem('cardColors');
+    if(!raw)return;
+    const saved=JSON.parse(raw);
+    const now=Date.now();
+    for(const p of pieces){
+      const entry=saved[p.id];
+      if(entry&&entry.color&&(now-entry.ts)<COLOR_TTL){
+        p.cardColor=entry.color;
+      } else {
+        p.cardColor=null;
+      }
+    }
+  }catch(e){}
+}
+
+function saveCardColors(){
+  try{
+    const data={};
+    for(const p of pieces){
+      if(p.cardColor)data[p.id]={color:p.cardColor,ts:Date.now()};
+    }
+    localStorage.setItem('cardColors',JSON.stringify(data));
+  }catch(e){}
+}
+
+function setCardColor(id,color){
+  const p=pieces.find(x=>x.id===id);if(!p)return;
+  p.cardColor=color||null;
+  saveCardColors();
+  renderPieceGrid();
+  if(selId===id)renderDetail();
+}
+
+// ── STARS ────────────────────────────────────────────────────────────────────
+function setStars(n){
+  const p=pieces.find(x=>x.id===selId);if(!p)return;
+  p.stars=(p.stars===n)?0:n; // click same star = clear
+  if(token&&siteId)spUpdate(p).catch(console.error);
+  renderPieceGrid();renderDetail();
+}
+
+// ── AUTO-LINK ────────────────────────────────────────────────────────────────
+function normalizeForMatch(s){
+  return s.toLowerCase()
+    .replace(/^ljs\s*[-–]\s*/i,'')       // strip LJS prefix from filenames
+    .replace(/^[a-z]{2,4}\s*[-–]\s*/i,'')// other short prefixes
+    .replace(/\s*[-–]\s*two\s*page.*/i,'')// strip "two page" suffix
+    .replace(/\s*[-–]\s*score.*/i,'')
+    .replace(/\.pdf$/i,'')
+    .replace(/op\.?\s*(\d)/gi,'opus $1')  // normalize Op. → opus
+    .replace(/no\.?\s*(\d)/gi,'no $1')
+    .replace(/[^a-z0-9 ]/gi,' ')
+    .replace(/\s+/g,' ').trim();
+}
+
+function findAutoMatch(p){
+  if(!allSiteFiles.length)return null;
+  const title=normalizeForMatch(p.title);
+  const words=title.split(' ').filter(w=>w.length>2);
+  if(!words.length)return null;
+  let best=null,bestScore=0;
+  for(const f of allSiteFiles){
+    const fname=normalizeForMatch(f.name);
+    let score=0;
+    for(const w of words){if(fname.includes(w))score++;}
+    const ratio=score/words.length;
+    if(ratio>bestScore){bestScore=ratio;best=f;}
+  }
+  // Only suggest if >50% of title words match
+  return bestScore>=0.5?best:null;
+}
+
+async function autoLinkPdf(){
+  const p=pieces.find(x=>x.id===selId);if(!p)return;
+  const match=findAutoMatch(p);if(!match)return;
+  p.pdfName=match.name;
+  p.pdfUrl=match.downloadUrl||match.webUrl;
+  p.pdfFileId=match.id||null;
+  if(token&&siteId)spUpdate(p).catch(console.error);
+  renderPieceGrid();renderDetail();
+  syncMsg('Score auto-linked ✓');
+}
+
+// Auto-link all pieces that have no PDF and have a strong match
+async function autoLinkAll(){
+  let linked=0;
+  for(const p of pieces){
+    if(p.pdfName)continue;
+    const match=findAutoMatch(p);
+    if(!match)continue;
+    p.pdfName=match.name;
+    p.pdfUrl=match.downloadUrl||match.webUrl;
+    p.pdfFileId=match.id||null;
+    if(token&&siteId)await spUpdate(p).catch(console.error);
+    linked++;
+  }
+  renderPieceGrid();
+  if(selId)renderDetail();
+  syncMsg(`Auto-linked ${linked} score${linked!==1?'s':''} ✓`);
+}
+
+// ── METRONOME ────────────────────────────────────────────────────────────────
+let metroBpm_val=80,metroBeats=4,metroInterval=null,metroBeat=0;
+let metroTapTimes=[],metroAudioCtx=null;
+
+// ── ALARM STATE ───────────────────────────────────────────────────────────────
+let alarmTargetSecs=0,alarmTargetActive=false;
+let alarmIntervalSecs=0,alarmIntervalActive=false,alarmIntervalTimer=null;
+let alarmAudioCtx=null;
+
+function parseMMSS(str){
+  if(!str)return 0;
+  const parts=str.trim().split(':');
+  if(parts.length===2)return parseInt(parts[0])*60+parseInt(parts[1]);
+  return parseInt(parts[0])||0;
+}
+
+function alarmRing(type){
+  // Play a bell sound using Web Audio
+  try{
+    if(!alarmAudioCtx)alarmAudioCtx=new(window.AudioContext||window.webkitAudioContext)();
+    const ctx=alarmAudioCtx;
+    const count=type==='target'?3:1;
+    for(let i=0;i<count;i++){
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.connect(g);g.connect(ctx.destination);
+      o.type='sine';
+      o.frequency.setValueAtTime(880,ctx.currentTime+i*0.4);
+      o.frequency.exponentialRampToValueAtTime(440,ctx.currentTime+i*0.4+0.3);
+      g.gain.setValueAtTime(0.6,ctx.currentTime+i*0.4);
+      g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+i*0.4+0.5);
+      o.start(ctx.currentTime+i*0.4);
+      o.stop(ctx.currentTime+i*0.4+0.5);
+    }
+  }catch(e){}
+}
+
+function toggleTargetAlarm(){
+  const btn=document.getElementById('alarm-target-btn');
+  const inp=document.getElementById('alarm-target');
+  if(alarmTargetActive){
+    alarmTargetActive=false;alarmTargetSecs=0;
+    if(btn){btn.textContent='SET';btn.style.color='#9a7858';btn.style.borderColor='#5a3820';}
+    if(inp){inp.style.borderColor='#5a3820';inp.style.color='#c09070';}
+  } else {
+    const secs=parseMMSS(inp?inp.value:'5:00');
+    if(!secs)return;
+    alarmTargetSecs=secs;alarmTargetActive=true;
+    if(btn){btn.textContent='ON ✓';btn.style.color='#6ade90';btn.style.borderColor='#3a8a58';}
+    if(inp){inp.style.borderColor='#3a8a58';inp.style.color='#6ade90';}
+  }
+}
+
+function toggleIntervalAlarm(){
+  const btn=document.getElementById('alarm-interval-btn');
+  const inp=document.getElementById('alarm-interval');
+  if(alarmIntervalActive){
+    alarmIntervalActive=false;
+    if(alarmIntervalTimer){clearInterval(alarmIntervalTimer);alarmIntervalTimer=null;}
+    if(btn){btn.textContent='SET';btn.style.color='#9a7858';btn.style.borderColor='#5a3820';}
+    if(inp){inp.style.borderColor='#5a3820';inp.style.color='#c09070';}
+  } else {
+    const secs=parseMMSS(inp?inp.value:'0:45');
+    if(!secs)return;
+    alarmIntervalSecs=secs;alarmIntervalActive=true;
+    if(alarmIntervalTimer)clearInterval(alarmIntervalTimer);
+    alarmIntervalTimer=setInterval(()=>{if(timerRunning)alarmRing('interval');},secs*1000);
+    if(btn){btn.textContent='ON ✓';btn.style.color='#6ade90';btn.style.borderColor='#3a8a58';}
+    if(inp){inp.style.borderColor='#3a8a58';inp.style.color='#6ade90';}
+  }
+}
+
+// Call this every second from timer tick to check target alarm
+function checkAlarms(){
+  if(alarmTargetActive&&alarmTargetSecs>0&&elapsed===alarmTargetSecs){
+    alarmRing('target');
+  }
+}
+
+// Sync the PDF side panel timer display
+function syncPdfSide(){
+  const p=pieces.find(x=>x.id===selId);
+  // Timer display
+  const td=document.getElementById('pdf-timer-display');
+  if(td)td.textContent=clockFmt(elapsed);
+  const tc2=document.getElementById('pdf-timer-controls');
+  if(tc2){
+    if(!timerRunning&&elapsed===0){
+      tc2.innerHTML=`<button class="pdf-side-btn" onclick="startTimer()">▶ Start</button>`;
+    } else if(timerRunning){
+      tc2.innerHTML=`<button class="pdf-side-btn" onclick="pauseTimer()">⏸ Pause</button> <button class="pdf-side-btn" onclick="resetTimer()">↺ Reset</button>`;
+    } else {
+      tc2.innerHTML=`<button class="pdf-side-btn" onclick="startTimer()">▶ Resume</button> <button class="pdf-side-btn active" onclick="saveTimer()">✓ Save ${hms(elapsed)}</button> <button class="pdf-side-btn" onclick="resetTimer()">↺ Reset</button>`;
+    }
+  }
+  const ti=document.getElementById('pdf-timer-info');
+  if(ti&&p)ti.textContent=`Total: ${hms(p.totalSeconds||0)} · Sessions: ${p.sessions||0}`;
+  const ni=document.getElementById('pdf-session-note');
+  if(ni)ni.style.display=elapsed>0?'block':'none';
+  // Alarms section - render dynamically so buttons always work
+  const alarmSec=document.getElementById('pdf-alarm-section');
+  if(alarmSec){
+    const tActive=alarmTargetActive;
+    const iActive=alarmIntervalActive;
+    const tVal=alarmTargetSecs?(Math.floor(alarmTargetSecs/60)+':'+(alarmTargetSecs%60).toString().padStart(2,'0')):'5:00';
+    const iVal=alarmIntervalSecs?(Math.floor(alarmIntervalSecs/60)+':'+(alarmIntervalSecs%60).toString().padStart(2,'0')):'0:45';
+    alarmSec.innerHTML=`
+      <div class="pdf-side-label">Alarms</div>
+      <div class="alarm-row">
+        <span class="alarm-lbl">TARGET</span>
+        <input class="alarm-input" id="alarm-target" type="text" value="${tActive?tVal:'5:00'}" placeholder="5:00"
+          style="border-color:${tActive?'#3a8a58':'#5a3820'};color:${tActive?'#6ade90':'#c09070'}"/>
+        <button id="alarm-target-btn" style="background:#2a1810;border:1px solid ${tActive?'#3a8a58':'#5a3820'};color:${tActive?'#6ade90':'#9a7858'};font-size:11px;padding:4px 10px;cursor:pointer;border-radius:4px;font-family:'DM Mono',monospace">${tActive?'ON ✓':'SET'}</button>
+      </div>
+      <div class="alarm-row">
+        <span class="alarm-lbl">EVERY</span>
+        <input class="alarm-input" id="alarm-interval" type="text" value="${iActive?iVal:'0:45'}" placeholder="0:45"
+          style="border-color:${iActive?'#3a8a58':'#5a3820'};color:${iActive?'#6ade90':'#c09070'}"/>
+        <button id="alarm-interval-btn" style="background:#2a1810;border:1px solid ${iActive?'#3a8a58':'#5a3820'};color:${iActive?'#6ade90':'#9a7858'};font-size:11px;padding:4px 10px;cursor:pointer;border-radius:4px;font-family:'DM Mono',monospace">${iActive?'ON ✓':'SET'}</button>
+      </div>`;
+    // Attach listeners directly to freshly created buttons
+    document.getElementById('alarm-target-btn').addEventListener('click',function(e){e.stopPropagation();toggleTargetAlarm();syncPdfSide();});
+    document.getElementById('alarm-interval-btn').addEventListener('click',function(e){e.stopPropagation();toggleIntervalAlarm();syncPdfSide();});
+  }
+  // Metronome BPM
+  const mb=document.getElementById('pdf-metro-bpm');
+  const ms=document.getElementById('pdf-metro-slider');
+  if(mb)mb.textContent=metroBpm_val;
+  if(ms)ms.value=metroBpm_val;
+  // Metro start btn
+  const pmb=document.getElementById('pdf-metro-btn');
+  if(pmb){pmb.textContent=metroInterval?'■ Stop':'▶ Start';}
+}
+
+function metroGetCtx(){
+  if(!metroAudioCtx)metroAudioCtx=new(window.AudioContext||window.webkitAudioContext)();
+  return metroAudioCtx;
+}
+function metroClick(accent){
+  try{
+    const ctx=metroGetCtx();
+    const o=ctx.createOscillator(),g=ctx.createGain();
+    o.connect(g);g.connect(ctx.destination);
+    o.frequency.value=accent?1200:900;
+    g.gain.setValueAtTime(accent?0.5:0.3,ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.08);
+    o.start();o.stop(ctx.currentTime+0.08);
+  }catch(e){}
+}
+function metroBpm(delta){
+  metroBpm_val=Math.max(30,Math.min(240,metroBpm_val+delta));
+  for(const id of['metro-bpm','pdf-metro-bpm']){const el=document.getElementById(id);if(el)el.textContent=metroBpm_val;}
+  for(const id of['metro-slider','pdf-metro-slider']){const el=document.getElementById(id);if(el)el.value=metroBpm_val;}
+  if(metroInterval){clearInterval(metroInterval);metroInterval=setInterval(metroBeat_fn,60000/metroBpm_val);}
+}
+function metroSetBpm(v){
+  metroBpm_val=Math.max(30,Math.min(240,v));
+  for(const id of['metro-bpm','pdf-metro-bpm']){const el=document.getElementById(id);if(el)el.textContent=metroBpm_val;}
+  for(const id of['metro-slider','pdf-metro-slider']){const el=document.getElementById(id);if(el)el.value=metroBpm_val;}
+  if(metroInterval){clearInterval(metroInterval);metroInterval=setInterval(metroBeat_fn,60000/metroBpm_val);}
+}
+function metroBeat_fn(){
+  metroBeat=(metroBeat%metroBeats)+1;
+  const accent=metroBeat===1;
+  metroClick(accent);
+  for(const id of['metro-beat','pdf-metro-beat2']){
+    const dot=document.getElementById(id);
+    if(dot){dot.classList.add('flash');setTimeout(()=>dot&&dot.classList.remove('flash'),80);}
+  }
+}
+function metroToggle(){
+  if(metroInterval){
+    clearInterval(metroInterval);metroInterval=null;metroBeat=0;
+    for(const id of['metro-start-btn','pdf-metro-btn']){
+      const btn=document.getElementById(id);
+      if(btn){btn.textContent='▶ Start';if(id==='metro-start-btn'){btn.className='btn btn-primary';btn.style.fontSize='13px';btn.style.padding='6px 16px';}}
+    }
+  } else {
+    metroBeat_fn();
+    metroInterval=setInterval(metroBeat_fn,60000/metroBpm_val);
+    for(const id of['metro-start-btn','pdf-metro-btn']){
+      const btn=document.getElementById(id);
+      if(btn){btn.textContent='■ Stop';if(id==='metro-start-btn'){btn.className='btn btn-ghost';btn.style.fontSize='13px';btn.style.padding='6px 16px';}}
+    }
+  }
+}
+function metroTap(){
+  const now=Date.now();
+  metroTapTimes=metroTapTimes.filter(t=>now-t<3000);
+  metroTapTimes.push(now);
+  if(metroTapTimes.length>=2){
+    const gaps=[];
+    for(let i=1;i<metroTapTimes.length;i++)gaps.push(metroTapTimes[i]-metroTapTimes[i-1]);
+    const avg=gaps.reduce((a,b)=>a+b,0)/gaps.length;
+    metroSetBpm(Math.round(60000/avg));
+  }
+}
+// Stop metronome when switching pieces (hooked into existing selectPiece)
+const _selectPieceOrig=window.selectPiece;
+
+// ── UPLOAD SCORE PDF ─────────────────────────────────────────────────────────
+async function uploadScorePdf(input){
+  const file=input.files[0];
+  if(!file||!file.name.endsWith('.pdf'))return;
+  if(!token||!siteId){alert('Please sign in first.');return;}
+
+  const prog=document.getElementById('upload-progress');
+  const btn=document.getElementById('upload-score-btn');
+  if(prog){prog.style.display='block';prog.textContent='UPLOADING '+file.name+'…';}
+  if(btn)btn.style.opacity='0.5';
+
+  try{
+    // Get Site Assets drive ID
+    const drives=await gGet(`https://graph.microsoft.com/v1.0/sites/${siteId}/drives`);
+    const sasDrive=(drives.value||[]).find(d=>d.name==='Site Assets'||d.name==='SiteAssets');
+    if(!sasDrive)throw new Error('Site Assets library not found');
+
+    // Upload via Graph API PUT (simple upload for files <4MB, chunked for larger)
+    const encodedName=encodeURIComponent(file.name);
+    let uploadUrl;
+
+    if(file.size<4*1024*1024){
+      // Simple upload
+      const r=await fetch(
+        `https://graph.microsoft.com/v1.0/drives/${sasDrive.id}/root:/${encodedName}:/content`,
+        {method:'PUT',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/pdf'},body:file}
+      );
+      if(!r.ok){const e=await r.json();throw new Error(e.error?.message||'Upload failed');}
+      const item=await r.json();
+      uploadUrl=item.webUrl;
+      // Add to allSiteFiles list immediately
+      allSiteFiles.unshift({
+        name:file.name,
+        displayName:cleanFileName(file.name),
+        id:item.id,
+        webUrl:item.webUrl,
+        downloadUrl:item['@microsoft.graph.downloadUrl']||null,
+        listItemId:item.id
+      });
+    } else {
+      // Large file: create upload session
+      const sessionRes=await fetch(
+        `https://graph.microsoft.com/v1.0/drives/${sasDrive.id}/root:/${encodedName}:/createUploadSession`,
+        {method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},
+         body:JSON.stringify({item:{'@microsoft.graph.conflictBehavior':'rename'}})}
+      );
+      const session=await sessionRes.json();
+      const CHUNK=5*1024*1024;
+      let start=0;
+      while(start<file.size){
+        const end=Math.min(start+CHUNK,file.size);
+        const chunk=file.slice(start,end);
+        if(prog)prog.textContent=`UPLOADING… ${Math.round(end/file.size*100)}%`;
+        const r=await fetch(session.uploadUrl,{
+          method:'PUT',
+          headers:{'Content-Range':`bytes ${start}-${end-1}/${file.size}`,'Content-Length':chunk.size},
+          body:chunk
+        });
+        if(r.ok&&end===file.size){
+          const item=await r.json();
+          allSiteFiles.unshift({name:file.name,displayName:cleanFileName(file.name),id:item.id,webUrl:item.webUrl,downloadUrl:null,listItemId:item.id});
+        }
+        start=end;
+      }
+    }
+
+    if(prog){prog.textContent='✓ UPLOADED SUCCESSFULLY';prog.style.color='#6ade90';}
+    setTimeout(()=>{if(prog){prog.style.display='none';prog.style.color='#4a9e6a';}},2500);
+    if(btn)btn.style.opacity='1';
+    // Refresh the search to show the new file
+    const searchEl=document.getElementById('pdf-search');
+    if(searchEl)filterPdfModal(searchEl.value);
+    input.value=''; // reset file input
+  }catch(e){
+    if(prog){prog.textContent='ERROR: '+e.message;prog.style.color='#ef9070';}
+    setTimeout(()=>{if(prog){prog.style.display='none';prog.style.color='#4a9e6a';}},4000);
+    if(btn)btn.style.opacity='1';
+    input.value='';
+  }
+}
+
+// ── DRAWING ENGINE ────────────────────────────────────────────────────────────
+let drawTool='pen',drawColor='#e03030',drawWidth=4;
+let drawingActive=false,drawLastX=0,drawLastY=0;
+// annotations: {pageNum: [{tool,color,width,points:[{x,y}]}]}
+let annotations={};
+
+function setDrawTool(tool){
+  drawTool=tool;
+  // Update button styles
+  ['pen','hl','erase'].forEach(t=>{
+    const btn=document.getElementById(`draw-${t==='hl'?'hl':'erase'===t?'erase':'pen'}-btn`);
+  });
+  document.getElementById('draw-pen-btn').style.background=tool==='pen'?'#5a2010':'#2a1810';
+  document.getElementById('draw-hl-btn').style.background=tool==='highlight'?'#5a4010':'#2a1810';
+  document.getElementById('draw-erase-btn').style.background=tool==='eraser'?'#2a2a2a':'#2a1810';
+}
+
+function getPos(canvas,e){
+  const r=canvas.getBoundingClientRect();
+  const scaleX=canvas.width/r.width;
+  const scaleY=canvas.height/r.height;
+  const src=e.touches?e.touches[0]:e;
+  return{x:(src.clientX-r.left)*scaleX,y:(src.clientY-r.top)*scaleY};
+}
+
+function setupDrawing(canvas){
+  let currentStroke=null;
+
+  function start(e){
+    e.preventDefault();
+    drawingActive=true;
+    const pos=getPos(canvas,e);
+    currentStroke={tool:drawTool,color:drawColor,width:drawWidth,points:[pos]};
+    const pageNum=+canvas.dataset.page;
+    if(!annotations[pageNum])annotations[pageNum]=[];
+    if(drawTool!=='eraser')annotations[pageNum].push(currentStroke);
+    draw(canvas,pos,pos,currentStroke);
+  }
+
+  function move(e){
+    e.preventDefault();
+    if(!drawingActive)return;
+    const pos=getPos(canvas,e);
+    const prev=currentStroke.points[currentStroke.points.length-1];
+    if(drawTool==='eraser'){
+      eraseAt(canvas,pos);
+    } else {
+      currentStroke.points.push(pos);
+      draw(canvas,prev,pos,currentStroke);
+    }
+  }
+
+  function end(e){e.preventDefault();drawingActive=false;saveAnnotationsToStorage();}
+
+  canvas.addEventListener('mousedown',start);
+  canvas.addEventListener('mousemove',move);
+  canvas.addEventListener('mouseup',end);
+  canvas.addEventListener('mouseleave',end);
+  canvas.addEventListener('touchstart',start,{passive:false});
+  canvas.addEventListener('touchmove',move,{passive:false});
+  canvas.addEventListener('touchend',end,{passive:false});
+}
+
+function draw(canvas,from,to,stroke){
+  const ctx=canvas.getContext('2d');
+  ctx.save();
+  if(stroke.tool==='highlight'){
+    ctx.globalAlpha=0.35;
+    ctx.globalCompositeOperation='multiply';
+    ctx.strokeStyle=stroke.color;
+    ctx.lineWidth=stroke.width*4;
+  } else {
+    ctx.globalAlpha=1;
+    ctx.globalCompositeOperation='source-over';
+    ctx.strokeStyle=stroke.color;
+    ctx.lineWidth=stroke.width;
+  }
+  ctx.lineCap='round';ctx.lineJoin='round';
+  ctx.beginPath();ctx.moveTo(from.x,from.y);ctx.lineTo(to.x,to.y);ctx.stroke();
+  ctx.restore();
+}
+
+function eraseAt(canvas,pos){
+  const ctx=canvas.getContext('2d');
+  const r=drawWidth*6;
+  ctx.clearRect(pos.x-r,pos.y-r,r*2,r*2);
+  // Also remove strokes from data model for this area
+  const pageNum=+canvas.dataset.page;
+  // Just clear the canvas region - full redraw on next spread render
+}
+
+function restoreAnnotations(canvas,pageNum){
+  const strokes=annotations[pageNum]||[];
+  for(const stroke of strokes){
+    for(let i=1;i<stroke.points.length;i++){
+      draw(canvas,stroke.points[i-1],stroke.points[i],stroke);
+    }
+    if(stroke.points.length===1){
+      draw(canvas,stroke.points[0],stroke.points[0],stroke);
+    }
+  }
+}
+
+function clearAnnotations(){
+  if(!confirm('Clear all annotations on this spread?'))return;
+  const overlays=document.querySelectorAll('#pdf-spread canvas[data-page]');
+  overlays.forEach(c=>{
+    const ctx=c.getContext('2d');
+    ctx.clearRect(0,0,c.width,c.height);
+    delete annotations[+c.dataset.page];
+  });
+  saveAnnotationsToStorage();
+}
+
+function saveAnnotationsToStorage(){
+  try{
+    const p=pieces.find(x=>x.id===selId);
+    if(!p)return;
+    localStorage.setItem('annot_'+selId,JSON.stringify(annotations));
+  }catch(e){}
+}
+
+function loadAnnotationsFromStorage(){
+  try{
+    const saved=localStorage.getItem('annot_'+selId);
+    annotations=saved?JSON.parse(saved):{};
+  }catch(e){annotations={};}
+}
+
+</script>
+</body>
+</html>

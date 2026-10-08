@@ -183,7 +183,7 @@ const DEST_PATH = 'SiteAssets/MusicScores';
 const LIST_NAME = 'MusicPieces';
 const CLIENT_ID = 'd069f3d2-23db-461b-9755-16420f84bce6';
 const TENANT_ID = 'c99253e2-27c0-4214-a9a2-4edc92f4473d';
-const SCOPES    = `https://${TENANT}/AllSites.Write openid profile`;
+const SCOPES    = `https://graph.microsoft.com/Sites.ReadWrite.All https://graph.microsoft.com/Files.ReadWrite.All openid profile`;
 const REDIRECT  = window.location.href.split('?')[0].split('#')[0];
 
 let accessToken = null;

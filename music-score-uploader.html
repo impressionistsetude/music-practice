@@ -305,7 +305,10 @@ async function runMigration() {
 
   try {
     // 1. Get all PDFs from source folder (handles subfolders too via search)
-    const srcDriveUrl = `https://graph.microsoft.com/v1.0/sites/tnws384.sharepoint.com:/sites/HomeBase:/drive/root:/${SRC_PATH}:/children?$top=500`;
+    // First get the site ID
+    const siteRes = await gFetch(`https://graph.microsoft.com/v1.0/sites/tnws384.sharepoint.com:/sites/HomeBase`);
+    const siteId = siteRes.id;
+    const srcDriveUrl = `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root:/${SRC_PATH}:/children?$top=500`;
     const srcData = await gFetch(srcDriveUrl);
     const allFiles = srcData.value || [];
     const pdfs = allFiles.filter(f => f.name?.toLowerCase().endsWith('.pdf'));
@@ -323,7 +326,7 @@ async function runMigration() {
     setProgress('migrateProgress','migrateBar',10);
 
     // 2. Get MusicPieces list items
-    const listData = await gFetch(`https://graph.microsoft.com/v1.0/sites/tnws384.sharepoint.com:/sites/HomeBase:/lists/${LIST_NAME}/items?expand=fields&$top=500`);
+    const listData = await gFetch(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${LIST_NAME}/items?expand=fields&$top=500`);
     const listItems = listData.value || [];
 
     // Build a lookup map: pdfName (lowercase) → list item
@@ -356,11 +359,8 @@ async function runMigration() {
 
       try {
         // Copy file to MusicScores using Graph copy endpoint
-        const destDriveRes = await gFetch(`https://graph.microsoft.com/v1.0/sites/tnws384.sharepoint.com:/sites/HomeBase:/drive/root:/${DEST_PATH}:/`);
-        const destDriveId = destDriveRes?.id;
-
         // Use the item's driveItem copy action
-        const copyUrl = `https://graph.microsoft.com/v1.0/sites/tnws384.sharepoint.com:/sites/HomeBase:/drive/items/${file.id}/copy`;
+        const copyUrl = `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/items/${file.id}/copy`;
         await fetch(copyUrl, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
@@ -371,7 +371,7 @@ async function runMigration() {
         const newUrl = `${SITE_URL}/${DEST_PATH}/${file.name}`;
         const listItem = listMap[file.name.toLowerCase()];
         if (listItem) {
-          const patchUrl = `https://graph.microsoft.com/v1.0/sites/tnws384.sharepoint.com:/sites/HomeBase:/lists/${LIST_NAME}/items/${listItem.id}/fields`;
+          const patchUrl = `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${LIST_NAME}/items/${listItem.id}/fields`;
           await fetch(patchUrl, {
             method: 'PATCH',
             headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
@@ -413,7 +413,9 @@ async function fixUrlsOnly() {
   document.getElementById('urlFixBtn').disabled = true;
   showStatus('migrateStatus','info','Fetching MusicPieces list entries…');
   try {
-    const listData = await gFetch(`https://graph.microsoft.com/v1.0/sites/tnws384.sharepoint.com:/sites/HomeBase:/lists/${LIST_NAME}/items?expand=fields&$top=500`);
+    const siteRes2 = await gFetch(`https://graph.microsoft.com/v1.0/sites/tnws384.sharepoint.com:/sites/HomeBase`);
+    const siteId2 = siteRes2.id;
+    const listData = await gFetch(`https://graph.microsoft.com/v1.0/sites/${siteId2}/lists/${LIST_NAME}/items?expand=fields&$top=500`);
     const items = (listData.value||[]).filter(i=>i.fields?.PdfName);
     migStats = {total:items.length,done:0,skip:0,err:0};
     updateSummary();
@@ -427,7 +429,7 @@ async function fixUrlsOnly() {
       row.innerHTML=`<div class="dot pending" id="dot-${item.id}"></div><div class="mig-name">${f.Title||f.PdfName}</div><div class="mig-note" id="note-${item.id}">Updating…</div>`;
       scroll.appendChild(row);
       try {
-        await fetch(`https://graph.microsoft.com/v1.0/sites/tnws384.sharepoint.com:/sites/HomeBase:/lists/${LIST_NAME}/items/${item.id}/fields`,{
+        await fetch(`https://graph.microsoft.com/v1.0/sites/${siteId2}/lists/${LIST_NAME}/items/${item.id}/fields`,{
           method:'PATCH', headers:{'Authorization':`Bearer ${accessToken}`,'Content-Type':'application/json'},
           body: JSON.stringify({PdfUrl:newUrl})
         });

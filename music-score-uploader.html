@@ -308,7 +308,16 @@ async function runMigration() {
     // First get the site ID
     const siteRes = await gFetch(`https://graph.microsoft.com/v1.0/sites/tnws384.sharepoint.com:/sites/HomeBase`);
     const siteId = siteRes.id;
-    const srcDriveUrl = `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root:/${SRC_PATH}:/children?$top=500`;
+
+    // Get all drives to find Site Assets
+    const drivesRes = await gFetch(`https://graph.microsoft.com/v1.0/sites/${siteId}/drives`);
+    const siteAssetsDrive = drivesRes.value.find(d => d.name === 'Site Assets' || d.name === 'SiteAssets');
+    if (!siteAssetsDrive) throw new Error('Could not find Site Assets drive. Drives found: ' + drivesRes.value.map(d=>d.name).join(', '));
+    const driveId = siteAssetsDrive.id;
+
+    // Now get PDFs from the subfolder
+    const subFolder = 'SitePages/LearningTeamHome(1)';
+    const srcDriveUrl = `https://graph.microsoft.com/v1.0/drives/${driveId}/root:/${subFolder}:/children?$top=500`;
     const srcData = await gFetch(srcDriveUrl);
     const allFiles = srcData.value || [];
     const pdfs = allFiles.filter(f => f.name?.toLowerCase().endsWith('.pdf'));
@@ -360,11 +369,11 @@ async function runMigration() {
       try {
         // Copy file to MusicScores using Graph copy endpoint
         // Use the item's driveItem copy action
-        const copyUrl = `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/items/${file.id}/copy`;
+        const copyUrl = `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${file.id}/copy`;
         await fetch(copyUrl, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ parentReference: { path: `/drives/${file.parentReference?.driveId}/root:/${DEST_PATH}` }, name: file.name })
+          body: JSON.stringify({ parentReference: { driveId: driveId, path: `/drives/${driveId}/root:/MusicScores` }, name: file.name })
         }); // Copy returns 202 Accepted — we don't wait for async completion
 
         // Update PdfUrl in list

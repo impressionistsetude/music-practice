@@ -180,6 +180,8 @@ const SITE      = 'HomeBase';
 const SITE_URL  = `https://${TENANT}/sites/${SITE}`;
 const SRC_PATH  = 'SiteAssets/SitePages/LearningTeamHome(1)';
 const DEST_PATH = 'SiteAssets/MusicScores';
+const SITE_ASSETS_DRIVE_ID = 'b!UvjaOv2dk0qgb1XgixZWT2X_149fsl9Mp73nW8Wwm2R0XJGpgcW4RJwSzKChM2Ro';
+const SITE_ID = 'tnws384.sharepoint.com,3adaf852-9dfd-4a93-a06f-55e08b16564f,8fd7ff65-b25f-4c5f-a7bd-e75bc5b09b64';
 const LIST_NAME = 'MusicPieces';
 const CLIENT_ID = 'd069f3d2-23db-461b-9755-16420f84bce6';
 const TENANT_ID = 'c99253e2-27c0-4214-a9a2-4edc92f4473d';
@@ -305,19 +307,12 @@ async function runMigration() {
 
   try {
     // 1. Get all PDFs from source folder (handles subfolders too via search)
-    // First get the site ID
-    const siteRes = await gFetch(`https://graph.microsoft.com/v1.0/sites/tnws384.sharepoint.com:/sites/HomeBase`);
-    const siteId = siteRes.id;
+    // Use hardcoded Site Assets drive ID (discovered via Graph Explorer)
+    const driveId = SITE_ASSETS_DRIVE_ID;
+    const siteId = SITE_ID;
 
-    // Get all drives to find Site Assets
-    const drivesRes = await gFetch(`https://graph.microsoft.com/v1.0/sites/${siteId}/drives`);
-    const siteAssetsDrive = drivesRes.value.find(d => d.name === 'Site Assets' || d.name === 'SiteAssets');
-    if (!siteAssetsDrive) throw new Error('Could not find Site Assets drive. Drives found: ' + drivesRes.value.map(d=>d.name).join(', '));
-    const driveId = siteAssetsDrive.id;
-
-    // Now get PDFs from the subfolder
-    const subFolder = 'SitePages/LearningTeamHome(1)';
-    const srcDriveUrl = `https://graph.microsoft.com/v1.0/drives/${driveId}/root:/${subFolder}:/children?$top=500`;
+    // Get PDFs from the source subfolder
+    const srcDriveUrl = `https://graph.microsoft.com/v1.0/drives/${driveId}/root:/SitePages/LearningTeamHome(1):/children?$top=500`;
     const srcData = await gFetch(srcDriveUrl);
     const allFiles = srcData.value || [];
     const pdfs = allFiles.filter(f => f.name?.toLowerCase().endsWith('.pdf'));
@@ -335,7 +330,7 @@ async function runMigration() {
     setProgress('migrateProgress','migrateBar',10);
 
     // 2. Get MusicPieces list items
-    const listData = await gFetch(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${LIST_NAME}/items?expand=fields&$top=500`);
+    const listData = await gFetch(`https://graph.microsoft.com/v1.0/sites/${SITE_ID}/lists/${LIST_NAME}/items?expand=fields&$top=500`);
     const listItems = listData.value || [];
 
     // Build a lookup map: pdfName (lowercase) → list item
@@ -373,14 +368,14 @@ async function runMigration() {
         await fetch(copyUrl, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ parentReference: { driveId: driveId, path: `/drives/${driveId}/root:/MusicScores` }, name: file.name })
+          body: JSON.stringify({ parentReference: { driveId: SITE_ASSETS_DRIVE_ID, path: `/drives/${SITE_ASSETS_DRIVE_ID}/root:/MusicScores` }, name: file.name })
         }); // Copy returns 202 Accepted — we don't wait for async completion
 
         // Update PdfUrl in list
         const newUrl = `${SITE_URL}/${DEST_PATH}/${file.name}`;
         const listItem = listMap[file.name.toLowerCase()];
         if (listItem) {
-          const patchUrl = `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${LIST_NAME}/items/${listItem.id}/fields`;
+          const patchUrl = `https://graph.microsoft.com/v1.0/sites/${SITE_ID}/lists/${LIST_NAME}/items/${listItem.id}/fields`;
           await fetch(patchUrl, {
             method: 'PATCH',
             headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
@@ -422,9 +417,7 @@ async function fixUrlsOnly() {
   document.getElementById('urlFixBtn').disabled = true;
   showStatus('migrateStatus','info','Fetching MusicPieces list entries…');
   try {
-    const siteRes2 = await gFetch(`https://graph.microsoft.com/v1.0/sites/tnws384.sharepoint.com:/sites/HomeBase`);
-    const siteId2 = siteRes2.id;
-    const listData = await gFetch(`https://graph.microsoft.com/v1.0/sites/${siteId2}/lists/${LIST_NAME}/items?expand=fields&$top=500`);
+    const listData = await gFetch(`https://graph.microsoft.com/v1.0/sites/${SITE_ID}/lists/${LIST_NAME}/items?expand=fields&$top=500`);
     const items = (listData.value||[]).filter(i=>i.fields?.PdfName);
     migStats = {total:items.length,done:0,skip:0,err:0};
     updateSummary();
@@ -438,7 +431,7 @@ async function fixUrlsOnly() {
       row.innerHTML=`<div class="dot pending" id="dot-${item.id}"></div><div class="mig-name">${f.Title||f.PdfName}</div><div class="mig-note" id="note-${item.id}">Updating…</div>`;
       scroll.appendChild(row);
       try {
-        await fetch(`https://graph.microsoft.com/v1.0/sites/${siteId2}/lists/${LIST_NAME}/items/${item.id}/fields`,{
+        await fetch(`https://graph.microsoft.com/v1.0/sites/${SITE_ID}/lists/${LIST_NAME}/items/${item.id}/fields`,{
           method:'PATCH', headers:{'Authorization':`Bearer ${accessToken}`,'Content-Type':'application/json'},
           body: JSON.stringify({PdfUrl:newUrl})
         });

@@ -102,6 +102,7 @@
     <div class="tabs">
       <button class="tab active" onclick="showTab('upload',this)">➕ Add New Score</button>
       <button class="tab" onclick="showTab('migrate',this)">🔄 Migrate & Fix All</button>
+      <button class="tab" onclick="showTab('check',this)">🔍 Check All PDFs</button>
     </div>
 
     <!-- ADD NEW SCORE -->
@@ -171,6 +172,34 @@
       </div>
     </div>
 
+    <!-- CHECK ALL PDFs TAB -->
+    <div id="tab-check" class="hidden">
+      <div class="card">
+        <h2>🔍 PDF Health Check</h2>
+        <div class="info-box">
+          Scans every entry in your MusicPieces list and checks whether the PDF exists in <code>SiteAssets/MusicScores</code>. <strong>Read-only — nothing is moved or changed.</strong>
+        </div>
+        <button class="btn btn-primary" id="checkBtn" onclick="runCheck()">🔍 Check All PDFs Now</button>
+        <div id="checkStatus" class="status-box" style="margin-top:1rem;"></div>
+        <div class="progress-wrap" id="checkProgress"><div class="progress-bar" id="checkBar"></div></div>
+        <div id="checkSummary" class="summary-bar hidden">
+          <span>📋 Total: <strong id="chkTotal">0</strong></span>
+          <span style="color:var(--green)">✅ Found: <strong id="chkFound">0</strong></span>
+          <span style="color:#C0392B">❌ Missing: <strong id="chkMissing">0</strong></span>
+          <span style="color:#95A5A6">➖ No PDF set: <strong id="chkNone">0</strong></span>
+        </div>
+        <div id="checkResults" class="hidden" style="margin-top:1rem;">
+          <div style="display:flex; gap:8px; margin-bottom:8px; flex-wrap:wrap;">
+            <button class="btn btn-secondary" style="font-size:12px; padding:4px 10px;" onclick="filterCheck('all')">Show All</button>
+            <button class="btn btn-secondary" style="font-size:12px; padding:4px 10px;" onclick="filterCheck('missing')">❌ Missing Only</button>
+            <button class="btn btn-secondary" style="font-size:12px; padding:4px 10px;" onclick="filterCheck('found')">✅ Found Only</button>
+          </div>
+          <div class="migration-scroll" id="checkList"></div>
+          <button class="btn btn-secondary" onclick="exportMissing()" style="margin-top:8px; font-size:13px;">📋 Copy missing list to clipboard</button>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -229,7 +258,7 @@ function showApp() {
 function showTab(name, btn) {
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   btn.classList.add('active');
-  ['upload','migrate'].forEach(t => document.getElementById('tab-'+t).classList.add('hidden'));
+  ['upload','migrate','check'].forEach(t => document.getElementById('tab-'+t).classList.add('hidden'));
   document.getElementById('tab-'+name).classList.remove('hidden');
 }
 
@@ -457,6 +486,86 @@ function showStatus(id,type,msg){ const el=document.getElementById(id); el.class
 function resetStatus(id){ const el=document.getElementById(id); el.className='status-box'; el.textContent=''; }
 function setProgress(wrapId,barId,pct){ const w=document.getElementById(wrapId),b=document.getElementById(barId); if(!w||!b)return; w.classList.toggle('show',pct>0&&pct<100); b.style.width=pct+'%'; }
 function updateSummary(){ document.getElementById('sumTotal').textContent=migStats.total; document.getElementById('sumDone').textContent=migStats.done; document.getElementById('sumSkip').textContent=migStats.skip; document.getElementById('sumErr').textContent=migStats.err; }
+
+// ── CHECK ALL PDFs ────────────────────────────────────
+let checkData = [];
+
+async function runCheck() {
+  document.getElementById('checkBtn').disabled = true;
+  document.getElementById('checkResults').classList.add('hidden');
+  document.getElementById('checkSummary').classList.add('hidden');
+  checkData = [];
+  showStatus('checkStatus', 'info', 'Step 1: Loading MusicPieces list…');
+  setProgress('checkProgress', 'checkBar', 5);
+  try {
+    const listData = await gFetch(`https://graph.microsoft.com/v1.0/sites/${SITE_ID}/lists/${LIST_NAME}/items?expand=fields&$top=500`);
+    const items = listData.value || [];
+    const withPdf = items.filter(i => i.fields?.PdfName);
+    const noPdf = items.filter(i => !i.fields?.PdfName);
+    showStatus('checkStatus', 'info', `Found ${items.length} pieces. Checking ${withPdf.length} PDFs in MusicScores…`);
+    setProgress('checkProgress', 'checkBar', 20);
+
+    // Get all files in MusicScores
+    const scoresData = await gFetch(`https://graph.microsoft.com/v1.0/drives/${SITE_ASSETS_DRIVE_ID}/root:/MusicScores:/children?$top=500&$select=name`);
+    const filesInScores = new Set((scoresData.value || []).map(f => f.name.toLowerCase()));
+    setProgress('checkProgress', 'checkBar', 60);
+    showStatus('checkStatus', 'info', `Found ${filesInScores.size} files in MusicScores. Comparing…`);
+
+    let found = 0, missing = 0;
+    withPdf.forEach(item => {
+      const f = item.fields;
+      const pdfName = f.PdfName;
+      const exists = filesInScores.has(pdfName.toLowerCase());
+      if (exists) found++; else missing++;
+      checkData.push({ title: f.Title || pdfName, pdfName, status: exists ? 'found' : 'missing' });
+    });
+    noPdf.forEach(item => {
+      checkData.push({ title: item.fields?.Title || 'Untitled', pdfName: null, status: 'none' });
+    });
+
+    document.getElementById('chkTotal').textContent = items.length;
+    document.getElementById('chkFound').textContent = found;
+    document.getElementById('chkMissing').textContent = missing;
+    document.getElementById('chkNone').textContent = noPdf.length;
+    document.getElementById('checkSummary').classList.remove('hidden');
+    setProgress('checkProgress', 'checkBar', 100);
+    showStatus('checkStatus', missing === 0 ? 'success' : 'info',
+      `Check complete! ${found} PDFs found, ${missing} missing, ${noPdf.length} pieces have no PDF set.`);
+    renderCheckList('missing');
+    document.getElementById('checkResults').classList.remove('hidden');
+  } catch(e) { showStatus('checkStatus', 'error', '❌ ' + e.message); }
+  document.getElementById('checkBtn').disabled = false;
+}
+
+function renderCheckList(filter) {
+  const list = document.getElementById('checkList');
+  list.innerHTML = '';
+  const items = filter === 'all' ? checkData :
+                 filter === 'missing' ? checkData.filter(i => i.status === 'missing') :
+                 checkData.filter(i => i.status === 'found');
+  if (items.length === 0) {
+    list.innerHTML = '<div class="mig-item">No items for this filter.</div>';
+    return;
+  }
+  items.forEach(item => {
+    const row = document.createElement('div'); row.className = 'mig-item';
+    const dot = item.status === 'found' ? 'done' : item.status === 'missing' ? 'err' : 'skip';
+    const note = item.status === 'found' ? '✅ In MusicScores' :
+                 item.status === 'missing' ? `❌ Look for: ${item.pdfName}` : '➖ No PDF set';
+    row.innerHTML = `<div class="dot ${dot}"></div><div class="mig-name">${item.title}</div><div class="mig-note">${note}</div>`;
+    list.appendChild(row);
+  });
+}
+
+function filterCheck(f) { renderCheckList(f); }
+
+function exportMissing() {
+  const missing = checkData.filter(i => i.status === 'missing');
+  const text = missing.map(i => `${i.title}  →  ${i.pdfName}`).join('\n');
+  navigator.clipboard.writeText(text).then(() => {
+    showStatus('checkStatus', 'success', `✅ Copied ${missing.length} missing PDFs to clipboard!`);
+  }).catch(() => { showStatus('checkStatus', 'error', 'Copy failed — try selecting manually.'); });
+}
 
 initAuth();
 </script>

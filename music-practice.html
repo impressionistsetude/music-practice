@@ -334,6 +334,7 @@ body{font-family:Arial,sans-serif;color:var(--text);display:flex;flex-direction:
   <button class="tab" onclick="switchTab('interleave')" id="tab-interleave">Interleave <span class="tab-count" id="tc-interleave">0</span></button>
   <button class="tab" onclick="switchTab('eflat')" id="tab-eflat">E♭ Instruments <span class="tab-count" id="tc-eflat">0</span></button>
   <button class="tab" onclick="switchTab('bflat')" id="tab-bflat">B♭ Instruments <span class="tab-count" id="tc-bflat">0</span></button>
+  <button class="tab" onclick="switchTab('musicology')" id="tab-musicology">Musicology (Readings) <span class="tab-count" id="tc-musicology">0</span></button>
 </div>
 
 <div class="main">
@@ -377,6 +378,7 @@ body{font-family:Arial,sans-serif;color:var(--text);display:flex;flex-direction:
         <option value="Interleave">Interleave</option>
         <option value="E Flat">E♭ Instruments</option>
         <option value="B Flat">B♭ Instruments</option>
+        <option value="Musicology">Musicology (Readings)</option>
       </select>
     </div>
     <div class="fld"><label>Initial Notes / Goals</label><textarea id="new-notes" rows="3" placeholder="What do you want to focus on?" style="resize:none"></textarea></div>
@@ -430,8 +432,9 @@ const SM={
   'Interleave': {c:'#6a3a8a',g:'#f5eaff',bc:'#6a3a8a55',s:'⟳',order:4},
   'E Flat':     {c:'#8040a0',g:'#f5eaff',bc:'#8040a055',s:'♭',order:5},
   'B Flat':     {c:'#c05080',g:'#ffeaf2',bc:'#c0508055',s:'♭',order:6},
+  'Musicology': {c:'#1a6a64',g:'#e6f6f4',bc:'#1a6a6455',s:'¶',order:7},
 };
-const STATUSES=['Not Started','Learning','Polishing','Ready','E Flat','B Flat'];
+const STATUSES=['Not Started','Learning','Polishing','Ready','Interleave','E Flat','B Flat','Musicology'];
 
 // ── STATE ────────────────────────────────────────────────────────────────────
 let token=null,userName=null,siteId=null;
@@ -872,7 +875,7 @@ function updateAuthUI(loggedIn){
 // ── TABS ─────────────────────────────────────────────────────────────────────
 function switchTab(tab){
   currentTab=tab;
-  ['practice','interleave','eflat','bflat'].forEach(t=>document.getElementById('tab-'+t).classList.toggle('active',t===tab));
+  ['practice','interleave','eflat','bflat','musicology'].forEach(t=>document.getElementById('tab-'+t).classList.toggle('active',t===tab));
   renderPieceGrid();
 }
 
@@ -880,7 +883,8 @@ function isInterleave(p){return p.status==='Interleave'||p.title.toLowerCase().i
 // Note: isPractice excludes interleave, eflat, bflat
 function isEflat(p){return p.status==='E Flat';}
 function isBflat(p){return p.status==='B Flat';}
-function isPractice(p){return !isInterleave(p)&&!isEflat(p)&&!isBflat(p);}
+function isMusicology(p){return p.status==='Musicology';}
+function isPractice(p){return !isInterleave(p)&&!isEflat(p)&&!isBflat(p)&&!isMusicology(p);}
 
 function sortKey(p){
   return p.title
@@ -923,11 +927,13 @@ function renderPieceGrid(){
   const interleave=pieces.filter(p=>isInterleave(p));
   const eflat=pieces.filter(p=>isEflat(p));
   const bflat=pieces.filter(p=>isBflat(p));
+  const musicology=pieces.filter(p=>isMusicology(p));
   document.getElementById('tc-practice').textContent=practice.length;
   document.getElementById('tc-interleave').textContent=interleave.length;
   document.getElementById('tc-eflat').textContent=eflat.length;
   document.getElementById('tc-bflat').textContent=bflat.length;
-  const listMap={practice,interleave,eflat,bflat};
+  document.getElementById('tc-musicology').textContent=musicology.length;
+  const listMap={practice,interleave,eflat,bflat,musicology};
   const list=listMap[currentTab]||practice;
   const filtered=sortedPieces(list).filter(p=>!query||p.title.toLowerCase().includes(query)||(p.composer||'').toLowerCase().includes(query));
   if(!filtered.length){wrap.innerHTML='<div style="text-align:center;padding:32px;color:var(--text4);font-style:italic;font-size:16px">No pieces found</div>';return;}
@@ -1152,7 +1158,7 @@ function openAddModal(){
   document.getElementById('new-composer').value='';
   document.getElementById('new-notes').value='';
   const sel=document.getElementById('new-status');
-  if(sel)sel.value=currentTab==='interleave'?'Interleave':currentTab==='eflat'?'E Flat':currentTab==='bflat'?'B Flat':'Not Started';
+  if(sel)sel.value=currentTab==='interleave'?'Interleave':currentTab==='eflat'?'E Flat':currentTab==='bflat'?'B Flat':currentTab==='musicology'?'Musicology':'Not Started';
   setTimeout(()=>document.getElementById('new-title').focus(),50);
 }
 function closeAddModal(){document.getElementById('add-modal').classList.remove('show');}

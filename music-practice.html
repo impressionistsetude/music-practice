@@ -1476,6 +1476,28 @@ async function openPdf(){
       }catch(e){}
     }
 
+    // Look the file up by name in the Site Assets list and read it via its list item (works without a stored pdfFileId)
+    if(!freshDlUrl&&!buf&&p.pdfName&&allSiteFiles.length){
+      const hit=allSiteFiles.find(f=>f.name===p.pdfName)||allSiteFiles.find(f=>f.name.toLowerCase()===p.pdfName.toLowerCase());
+      if(hit&&hit.listItemId){
+        try{
+          const r=await fetch(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/Site%20Assets/items/${hit.listItemId}/driveItem/content`,{headers:{Authorization:'Bearer '+token}});
+          if(r.ok){buf=await r.arrayBuffer();p.pdfFileId=hit.listItemId;}
+          else lastErr='List item content: HTTP '+r.status;
+        }catch(e){lastErr='List item content: '+e.message;}
+      }else if(!hit){lastErr='File name not found in Site Assets list: '+p.pdfName;}
+    }
+
+    // Last resort: resolve the file straight from its stored SharePoint link (works for files in any library/folder)
+    if(!freshDlUrl&&!buf&&p.pdfUrl&&/^https:\/\//i.test(p.pdfUrl)){
+      try{
+        const enc='u!'+btoa(unescape(encodeURIComponent(p.pdfUrl))).replace(/=+$/,'').replace(/\//g,'_').replace(/\+/g,'-');
+        const r=await fetch(`https://graph.microsoft.com/v1.0/shares/${enc}/driveItem/content`,{headers:{Authorization:'Bearer '+token}});
+        if(r.ok)buf=await r.arrayBuffer();
+        else lastErr='Link fallback: HTTP '+r.status;
+      }catch(e){lastErr='Link fallback: '+e.message;}
+    }
+
     // Step 4: Also fix the stored pdfFileId if we found it via allSiteFiles
     if(freshDlUrl&&p.pdfName){
       const cached=allSiteFiles.find(f=>f.name===p.pdfName);
@@ -2147,99 +2169,71 @@ function metroTap(){
 const _selectPieceOrig=window.selectPiece;
 
 // ── UPLOAD SCORE PDF ─────────────────────────────────────────────────────────
+// Uploads go to the real Site Assets library, in the MusicScores folder (the same place as the rest of your scores).
+// The file on your computer is only read, never changed or moved.
+const SITE_ASSETS_DRIVE_ID='b!UvjaOv2dk0qgb1XgixZWT2X_149fsl9Mp73nW8Wwm2R0XJGpgcW4RJwSzKChM2Ro';
 async function uploadScorePdf(input){
   const file=input.files[0];
-  if(!file||!file.name.endsWith('.pdf'))return;
+  if(!file||!file.name.toLowerCase().endsWith('.pdf'))return;
   if(!token||!siteId){alert('Please sign in first.');return;}
 
   const prog=document.getElementById('upload-progress');
   const btn=document.getElementById('upload-score-btn');
-  if(prog){prog.style.display='block';prog.textContent='UPLOADING '+file.name+'…';}
+  if(prog){prog.style.display='block';prog.style.color='#4a9e6a';prog.textContent='UPLOADING '+file.name+' TO MUSICSCORES…';}
   if(btn)btn.style.opacity='0.5';
 
   try{
-    // Upload directly to Site Assets using the site drive root path
-    // This avoids needing to find the drive by name
     const encodedName=encodeURIComponent(file.name);
-
-    // First try: upload via site default drive to SiteAssets folder
-    // Second try: upload via the Sites.ReadWrite scope directly
+    const base=`https://graph.microsoft.com/v1.0/drives/${SITE_ASSETS_DRIVE_ID}/root:/MusicScores/${encodedName}:`;
     let item=null;
 
     if(file.size<4*1024*1024){
-      // Simple upload - try site drive SiteAssets path first
-      const uploadUrls=[
-        `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root:/SiteAssets/${encodedName}:/content`,
-        `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root:/Site%20Assets/${encodedName}:/content`,
-      ];
-      for(const url of uploadUrls){
-        try{
-          const r=await fetch(url,{method:'PUT',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/pdf'},body:file});
-          if(r.ok){item=await r.json();break;}
-        }catch(e){console.warn('Upload attempt failed:',e.message);}
-      }
-      if(!item){
-        // Fallback: try all drives
-        const drives=await gGet(`https://graph.microsoft.com/v1.0/sites/${siteId}/drives`);
-        console.log('Available drives:',(drives.value||[]).map(d=>d.name).join(', '));
-        const drive=(drives.value||[])[0]; // use first available drive
-        if(!drive)throw new Error('No drives found on this SharePoint site');
-        const r=await fetch(
-          `https://graph.microsoft.com/v1.0/drives/${drive.id}/root:/${encodedName}:/content`,
-          {method:'PUT',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/pdf'},body:file}
-        );
-        if(!r.ok){const e=await r.json();throw new Error(e.error?.message||`Upload failed (${r.status})`);}
-        item=await r.json();
-      }
-      if(item){
-        allSiteFiles.unshift({
-          name:file.name,
-          displayName:cleanFileName(file.name),
-          id:item.id,
-          webUrl:item.webUrl,
-          downloadUrl:item['@microsoft.graph.downloadUrl']||null,
-          listItemId:item.id
-        });
-      }
-    } else {
-      // Large file: create upload session via site drive
-      const sessionUrls=[
-        `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root:/SiteAssets/${encodedName}:/createUploadSession`,
-        `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root:/Site%20Assets/${encodedName}:/createUploadSession`,
-      ];
-      let session=null;
-      for(const url of sessionUrls){
-        try{
-          const r=await fetch(url,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({item:{'@microsoft.graph.conflictBehavior':'rename'}})});
-          if(r.ok){session=await r.json();break;}
-        }catch(e){console.warn(e.message);}
-      }
-      if(!session)throw new Error('Could not create upload session');
-      const CHUNK=5*1024*1024;
+      const r=await gFetch(`${base}/content?@microsoft.graph.conflictBehavior=rename`,{method:'PUT',headers:{'Content-Type':'application/pdf'},body:file});
+      if(!r.ok){const t=await r.text();throw new Error(`Upload failed (${r.status}): ${t.substring(0,150)}`);}
+      item=await r.json();
+    }else{
+      const sr=await gFetch(`${base}/createUploadSession`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({item:{'@microsoft.graph.conflictBehavior':'rename'}})});
+      if(!sr.ok){const t=await sr.text();throw new Error(`Could not start upload (${sr.status}): ${t.substring(0,150)}`);}
+      const session=await sr.json();
+      const CHUNK=5*1024*1024; // multiple of 320 KiB, as Graph requires
       let start=0;
       while(start<file.size){
         const end=Math.min(start+CHUNK,file.size);
         const chunk=file.slice(start,end);
         if(prog)prog.textContent=`UPLOADING… ${Math.round(end/file.size*100)}%`;
-        const r=await fetch(session.uploadUrl,{method:'PUT',headers:{'Content-Range':`bytes ${start}-${end-1}/${file.size}`,'Content-Length':chunk.size},body:chunk});
-        if(r.ok&&end===file.size){
-          item=await r.json();
-          if(item)allSiteFiles.unshift({name:file.name,displayName:cleanFileName(file.name),id:item.id,webUrl:item.webUrl,downloadUrl:null,listItemId:item.id});
-        }
+        const r=await fetch(session.uploadUrl,{method:'PUT',headers:{'Content-Range':`bytes ${start}-${end-1}/${file.size}`},body:chunk});
+        if(!r.ok&&r.status!==202)throw new Error('Upload failed at '+Math.round(end/file.size*100)+'% ('+r.status+')');
+        if(r.ok&&end===file.size)item=await r.json();
         start=end;
       }
     }
+    if(!item||!item.id)throw new Error('Upload finished but SharePoint returned no file');
 
-    if(prog){prog.textContent='✓ UPLOADED SUCCESSFULLY';prog.style.color='#6ade90';}
+    // Find the file's list-item id so it can be linked and reopened later
+    let listItemId=null;
+    try{const li=await gGet(`https://graph.microsoft.com/v1.0/drives/${SITE_ASSETS_DRIVE_ID}/items/${item.id}/listItem?$select=id`);listItemId=li&&li.id||null;}catch(e){console.warn('listItem lookup failed:',e.message);}
+
+    allSiteFiles.unshift({
+      id:listItemId||item.id,
+      listItemId:listItemId,
+      driveItemId:item.id,
+      driveId:SITE_ASSETS_DRIVE_ID,
+      name:item.name||file.name,
+      displayName:cleanFileName(item.name||file.name),
+      webUrl:item.webUrl||'',
+      downloadUrl:item['@microsoft.graph.downloadUrl']||null
+    });
+
+    if(prog){prog.textContent='✓ SAVED TO MUSICSCORES';prog.style.color='#6ade90';}
     setTimeout(()=>{if(prog){prog.style.display='none';prog.style.color='#4a9e6a';}},2500);
     if(btn)btn.style.opacity='1';
-    // Refresh the search to show the new file
     const searchEl=document.getElementById('pdf-search');
     if(searchEl)filterPdfList();
-    input.value=''; // reset file input
+    input.value='';
   }catch(e){
+    console.error('[uploadScorePdf]',e);
     if(prog){prog.textContent='ERROR: '+e.message;prog.style.color='#ef9070';}
-    setTimeout(()=>{if(prog){prog.style.display='none';prog.style.color='#4a9e6a';}},4000);
+    setTimeout(()=>{if(prog){prog.style.display='none';prog.style.color='#4a9e6a';}},6000);
     if(btn)btn.style.opacity='1';
     input.value='';
   }

@@ -243,7 +243,11 @@ function initAuth() {
   const token = params.get('access_token');
   if (token) { accessToken = token; sessionStorage.setItem('msToken', token); window.history.replaceState({},'',' '); showApp(); return; }
   const stored = sessionStorage.getItem('msToken');
-  if (stored) { accessToken = stored; showApp(); return; }
+  if (stored) {
+    const exp = parseToken(stored).exp;
+    if (exp && exp*1000 > Date.now() + 60000) { accessToken = stored; showApp(); return; }
+    sessionStorage.removeItem('msToken'); // expired: show the sign-in screen instead of failing later
+  }
 }
 function showApp() {
   const name = parseToken(accessToken).name || 'Ramon';
@@ -300,26 +304,52 @@ async function saveScore() {
   if (!selectedFile) return;
   const title = document.getElementById('f_title').value.trim();
   if (!title) { showStatus('uploadStatus','error','Please enter a title.'); return; }
-  const pdfName = document.getElementById('f_pdfname').value.trim() || selectedFile.name;
+  let pdfName = document.getElementById('f_pdfname').value.trim() || selectedFile.name;
   const composer = document.getElementById('f_composer').value.trim();
   const status = document.getElementById('f_status').value;
   const notes = document.getElementById('f_notes').value.trim();
-  const pdfUrl = `${SITE_URL}/${DEST_PATH}/${pdfName}`;
   const btn = document.getElementById('saveBtn');
   btn.disabled = true;
   setProgress('uploadProgress','uploadBar',10);
   showStatus('uploadStatus','info','Step 1 of 2: Uploading PDF to MusicScores…');
   try {
-    await fetch(`https://graph.microsoft.com/v1.0/sites/tnws384.sharepoint.com:/sites/HomeBase:/drive/root:/${DEST_PATH}/${pdfName}:/content`, {
-      method:'PUT', headers:{'Authorization':`Bearer ${accessToken}`,'Content-Type':'application/pdf'}, body: selectedFile
-    }).then(r=>{ if(!r.ok) throw new Error('Upload failed: '+r.status); });
+    // Goes into the Site Assets library (not the Documents library), in the MusicScores folder.
+    // The file on your computer is only read, never moved or changed.
+    const base = `https://graph.microsoft.com/v1.0/drives/${SITE_ASSETS_DRIVE_ID}/root:/MusicScores/${encodeURIComponent(pdfName)}:`;
+    let saved = null;
+    if (selectedFile.size < 4*1024*1024) {
+      const r = await fetch(`${base}/content?@microsoft.graph.conflictBehavior=rename`, {
+        method:'PUT', headers:{'Authorization':`Bearer ${accessToken}`,'Content-Type':'application/pdf'}, body: selectedFile
+      });
+      if (!r.ok) { const t = await r.text(); throw new Error(`Upload failed (${r.status}): ${t.substring(0,150)}`); }
+      saved = await r.json();
+    } else {
+      const sr = await fetch(`${base}/createUploadSession`, {
+        method:'POST', headers:{'Authorization':`Bearer ${accessToken}`,'Content-Type':'application/json'},
+        body: JSON.stringify({ item:{ '@microsoft.graph.conflictBehavior':'rename' } })
+      });
+      if (!sr.ok) { const t = await sr.text(); throw new Error(`Could not start upload (${sr.status}): ${t.substring(0,150)}`); }
+      const session = await sr.json();
+      const CHUNK = 5*1024*1024; // multiple of 320 KiB, as Graph requires
+      for (let start=0; start<selectedFile.size; start+=CHUNK) {
+        const end = Math.min(start+CHUNK, selectedFile.size);
+        const r = await fetch(session.uploadUrl, { method:'PUT', headers:{'Content-Range':`bytes ${start}-${end-1}/${selectedFile.size}`}, body: selectedFile.slice(start,end) });
+        if (!r.ok && r.status !== 202) throw new Error(`Upload failed at ${Math.round(end/selectedFile.size*100)}% (${r.status})`);
+        if (r.ok && end === selectedFile.size) saved = await r.json();
+        setProgress('uploadProgress','uploadBar', 10 + Math.round(end/selectedFile.size*50));
+      }
+    }
+    if (!saved || !saved.name) throw new Error('Upload finished but SharePoint returned no file');
+    // If a file with the same name already existed, SharePoint renamed the new one — use the name it really has
+    pdfName = saved.name;
+    const pdfUrl = (saved.webUrl && saved.webUrl.length <= 255) ? saved.webUrl : '';
     setProgress('uploadProgress','uploadBar',60);
     showStatus('uploadStatus','info','Step 2 of 2: Adding to MusicPieces list…');
     await gFetch(`https://graph.microsoft.com/v1.0/sites/tnws384.sharepoint.com:/sites/HomeBase:/lists/${LIST_NAME}/items`, {
       method:'POST', body: JSON.stringify({ fields:{ Title:title, Composer:composer, Status:status, Notes:notes, PdfName:pdfName, PdfUrl:pdfUrl, TotalSeconds:0, Sessions:0 } })
     });
     setProgress('uploadProgress','uploadBar',100);
-    showStatus('uploadStatus','success',`✅ "${title}" uploaded and added to your MusicPieces list!`);
+    showStatus('uploadStatus','success',`✅ "${title}" saved in Site Assets/MusicScores as \"${pdfName}\" and added to your MusicPieces list!`);
     btn.disabled = false;
     setTimeout(resetForm, 3000);
   } catch(e) { showStatus('uploadStatus','error','❌ '+e.message); setProgress('uploadProgress','uploadBar',0); btn.disabled=false; }

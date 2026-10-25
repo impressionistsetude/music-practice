@@ -272,6 +272,12 @@ dz.addEventListener('dragover', e=>{ e.preventDefault(); dz.classList.add('drag-
 dz.addEventListener('dragleave', ()=> dz.classList.remove('drag-over'));
 dz.addEventListener('drop', e=>{ e.preventDefault(); dz.classList.remove('drag-over'); const f=e.dataTransfer.files[0]; if(f&&f.type==='application/pdf') handleFile(f); else showStatus('uploadStatus','error','Please drop a PDF file.'); });
 
+// SharePoint rejects these characters in file names: \ / : * ? " < > |
+function safeFileName(n) {
+  let out = (n||'').replace(/[\\/:*?"<>|]/g,'').replace(/\s+/g,' ').trim().replace(/^\.+/,'');
+  out = out.replace(/\s+\.pdf$/i,'.pdf');
+  return out || 'score.pdf';
+}
 function handleFile(file) {
   if (!file) return;
   selectedFile = file;
@@ -281,7 +287,7 @@ function handleFile(file) {
   name = name.replace(/\s*(Two\s*P[ag]+\.?|2P|2\s*Pg)\s*/gi,'').trim().replace(/\b\w/g,c=>c.toUpperCase());
   document.getElementById('f_title').value = name;
   document.getElementById('f_composer').value = '';
-  document.getElementById('f_pdfname').value = file.name;
+  document.getElementById('f_pdfname').value = safeFileName(file.name);
   document.getElementById('f_status').value = 'Learning';
   document.getElementById('f_notes').value = '';
   resetStatus('uploadStatus');
@@ -304,7 +310,7 @@ async function saveScore() {
   if (!selectedFile) return;
   const title = document.getElementById('f_title').value.trim();
   if (!title) { showStatus('uploadStatus','error','Please enter a title.'); return; }
-  let pdfName = document.getElementById('f_pdfname').value.trim() || selectedFile.name;
+  let pdfName = safeFileName(document.getElementById('f_pdfname').value.trim() || selectedFile.name);
   const composer = document.getElementById('f_composer').value.trim();
   const status = document.getElementById('f_status').value;
   const notes = document.getElementById('f_notes').value.trim();

@@ -2183,7 +2183,9 @@ async function uploadScorePdf(input){
   if(btn)btn.style.opacity='0.5';
 
   try{
-    const encodedName=encodeURIComponent(file.name);
+    // SharePoint rejects \ / : * ? " < > | in file names, so remove them from the saved copy's name
+    const safeName=(file.name.replace(/[\\/:*?"<>|]/g,'').replace(/\s+/g,' ').trim().replace(/^\.+/,'').replace(/\s+\.pdf$/i,'.pdf'))||'score.pdf';
+    const encodedName=encodeURIComponent(safeName);
     const base=`https://graph.microsoft.com/v1.0/drives/${SITE_ASSETS_DRIVE_ID}/root:/MusicScores/${encodedName}:`;
     let item=null;
 
@@ -2218,8 +2220,8 @@ async function uploadScorePdf(input){
       listItemId:listItemId,
       driveItemId:item.id,
       driveId:SITE_ASSETS_DRIVE_ID,
-      name:item.name||file.name,
-      displayName:cleanFileName(item.name||file.name),
+      name:item.name||safeName,
+      displayName:cleanFileName(item.name||safeName),
       webUrl:item.webUrl||'',
       downloadUrl:item['@microsoft.graph.downloadUrl']||null
     });

@@ -1546,6 +1546,7 @@ async function openPdf(){
       }
     }
     pdfDoc=await pdfjsLib.getDocument({data:buf}).promise;
+    _pdfDocId++;_pageCache.clear();_pageInflight.clear();
     pdfTotal=pdfDoc.numPages;loadSavedZoom();
     pdfSpread=Math.min(loadSavedPage(),pdfTotal);
     const firstPage=await pdfDoc.getPage(1);
@@ -1633,7 +1634,48 @@ function closePdf(){
   // Saving at close time reads scrollTop=0 (pdf-spread isn't the scroll element)
   // and overwrites the correct saved position with zeros.
   pdfBaseScale=null;
+  _pdfDocId++;_pageCache.clear();_pageInflight.clear();
   document.getElementById('pdf-viewer').classList.remove('show');
+}
+
+// ── Page cache: rendered pages are kept (up to 8) and the neighbouring pages are rendered in the background,
+// so Next/Prev can reuse an already-drawn page instead of re-rendering it from the PDF each time.
+let _pdfDocId=0;
+const _pageCache=new Map();     // key -> rendered canvas (least recently used first)
+const _pageInflight=new Map();  // key -> promise, so the same page is never rendered twice at once
+function _pageKey(n){return _pdfDocId+':'+n+'@'+(pdfBaseScale*pdfZoom).toFixed(4);}
+async function getPageBitmap(n){
+  const key=_pageKey(n);
+  if(_pageCache.has(key)){const c=_pageCache.get(key);_pageCache.delete(key);_pageCache.set(key,c);return c;}
+  if(_pageInflight.has(key))return _pageInflight.get(key);
+  const doc=pdfDoc,docId=_pdfDocId,scale=pdfBaseScale*pdfZoom;
+  const pr=(async()=>{
+    const page=await doc.getPage(n);
+    const vp=page.getViewport({scale});
+    const c=document.createElement('canvas');
+    c.width=vp.width;c.height=vp.height;
+    await page.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;
+    if(docId===_pdfDocId){
+      _pageCache.set(key,c);
+      while(_pageCache.size>8)_pageCache.delete(_pageCache.keys().next().value);
+    }
+    return c;
+  })();
+  _pageInflight.set(key,pr);
+  try{return await pr;}finally{_pageInflight.delete(key);}
+}
+function prefetchAdjacent(){
+  if(!pdfDoc)return;
+  const docId=_pdfDocId,step=pdfSinglePage?1:2,targets=[];
+  const add=s=>{targets.push(s);if(!pdfSinglePage&&s+1<=pdfTotal)targets.push(s+1);};
+  if(pdfSpread<pdfTotal)add(Math.min(pdfSpread+step,pdfTotal));
+  if(pdfSpread>1)add(Math.max(1,pdfSpread-step));
+  (window.requestIdleCallback||setTimeout)(async()=>{
+    for(const n of targets){
+      if(docId!==_pdfDocId)return;
+      try{await getPageBitmap(n);}catch(e){}
+    }
+  });
 }
 
 async function renderSpread(restoreScroll){
@@ -1653,14 +1695,13 @@ async function renderSpread(restoreScroll){
     const wrap=document.createElement('div');
     wrap.className='page-wrap';
     wrap.style.position='relative';
+    const bmp=await getPageBitmap(n);
     const canvas=document.createElement('canvas');
-    const page=await pdfDoc.getPage(n);
-    const vp=page.getViewport({scale:pdfBaseScale*pdfZoom});
-    canvas.width=vp.width;canvas.height=vp.height;
-    await page.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;
+    canvas.width=bmp.width;canvas.height=bmp.height;
+    canvas.getContext('2d').drawImage(bmp,0,0);
     // Annotation overlay canvas
     const overlay=document.createElement('canvas');
-    overlay.width=vp.width;overlay.height=vp.height;
+    overlay.width=bmp.width;overlay.height=bmp.height;
     overlay.style.cssText=`position:absolute;top:0;left:0;cursor:crosshair;touch-action:none;pointer-events:none`;
     overlay.dataset.page=n;
     // Only enable pointer events on the overlay when mouse is over the score page
@@ -1671,10 +1712,12 @@ async function renderSpread(restoreScroll){
     restoreAnnotations(overlay,n);
     wrap.appendChild(canvas);
     wrap.appendChild(overlay);
-    row.appendChild(wrap);
+    return wrap;
   }
-  await renderOne(pdfSpread);
-  if(!pdfSinglePage&&pdfSpread+1<=pdfTotal)await renderOne(pdfSpread+1);
+  const spreadPages=[pdfSpread];
+  if(!pdfSinglePage&&pdfSpread+1<=pdfTotal)spreadPages.push(pdfSpread+1);
+  const wraps=await Promise.all(spreadPages.map(renderOne));   // both pages render at the same time
+  wraps.forEach(w=>row.appendChild(w));
   if(restoreScroll){
     const s=loadSavedScroll();
     console.log('[Scroll] restoreScroll=true, loaded=',s);
@@ -1697,6 +1740,7 @@ async function renderSpread(restoreScroll){
     }
   }
   syncPdfSide();
+  prefetchAdjacent();
 }
 async function prevSpread(){
   if(pdfSpread>1){saveScroll();pdfSpread=Math.max(1,pdfSpread-(pdfSinglePage?1:2));savePage();await renderSpread(true);}

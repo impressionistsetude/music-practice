@@ -1566,6 +1566,7 @@ async function openPdf(){
       pdfBaseScale=(containerW-pageGap)/numPages/vp0.width;
       saveBaseScale();
     }
+    migrateLegacyAnnotations();
     await renderSpread(true);
   }catch(e){
     document.getElementById('pdf-spread').innerHTML=`<div class="pdf-loading" style="color:#ef9070;text-align:center;line-height:2.2">${e.message}<br><br><a href="${p.pdfUrl}" target="_blank" style="color:#90c0e0;font-size:14px;text-decoration:underline">Open in SharePoint ↗</a><br><br><button onclick="diagnosePdf()" style="margin-top:8px;background:#3a2820;border:1px solid #c09070;color:#e0c090;padding:8px 18px;border-radius:5px;cursor:pointer;font-size:13px">🔍 Run Diagnostics</button><div id="diag-out" style="margin-top:14px;text-align:left;font-size:11px;color:#a09080;max-width:600px;word-break:break-all;line-height:1.8"></div></div>`;
@@ -2290,6 +2291,10 @@ let drawTool='pen',drawColor='#e03030',drawWidth=4;
 let drawingActive=false;
 // annotations: {pageNum: [{tool,color,width,points:[{x,y}],erased?:bool} | {tool:'text',color,fontSize,x,y,text,erased?:bool}]}
 let annotations={};
+// Annotations are stored in PAGE UNITS (the PDF's own coordinates at 100%), not screen pixels,
+// so they stay on the same notes/staves at any zoom or window size.
+function annotScale(){return (pdfBaseScale||1)*pdfZoom;}
+let _annotLegacy=false;
 
 function wrapText(ctx,text,x,y,maxWidth,lineHeight){
   // Draw wrapped text on canvas, returns total height used
@@ -2315,15 +2320,16 @@ function wrapText(ctx,text,x,y,maxWidth,lineHeight){
 }
 
 function findTextAnnotationAt(pos,pageNum){
-  // Find a text annotation near the click position (for editing)
+  // Find a text annotation near the click position (for editing); pos is in canvas pixels
+  const S=annotScale(),px=pos.x/S,py=pos.y/S,pad=10/S;
   const entries=annotations[pageNum]||[];
   for(let i=entries.length-1;i>=0;i--){
     const e=entries[i];
     if(e.tool!=='text')continue;
     const lh=e.fontSize*1.3;
     const lines=e.text.split('\n').length;
-    if(pos.x>=e.x-10&&pos.x<=e.x+(e.wrapWidth||400)+10&&
-       pos.y>=e.y-e.fontSize&&pos.y<=e.y+lines*lh+10){
+    if(px>=e.x-pad&&px<=e.x+(e.wrapWidth||400/S)+pad&&
+       py>=e.y-e.fontSize&&py<=e.y+lines*lh+pad){
       return{entry:e,index:i};
     }
   }
@@ -2334,13 +2340,14 @@ function openTextEditor(canvas,pos,pageNum,existing){
   const r=canvas.getBoundingClientRect();
   const scaleX=r.width/canvas.width;
   const scaleY=r.height/canvas.height;
-  const fontSize=existing?existing.entry.fontSize:(parseInt(document.getElementById('draw-fontsize').value)||32);
+  const S=annotScale();
+  const fontSize=existing?existing.entry.fontSize*S:(parseInt(document.getElementById('draw-fontsize').value)||32);
   const color=existing?existing.entry.color:drawColor;
-  const wrapWidth=existing?existing.entry.wrapWidth:300;
+  const wrapWidth=(existing&&existing.entry.wrapWidth)?existing.entry.wrapWidth*S:300;
 
   const wrap=canvas.closest('.page-wrap')||canvas.parentElement;
-  const anchorX=existing?existing.entry.x*scaleX:pos.x*scaleX;
-  const anchorY=existing?existing.entry.y*scaleY-fontSize*scaleY:pos.y*scaleY-fontSize*scaleY;
+  const anchorX=existing?existing.entry.x*S*scaleX:pos.x*scaleX;
+  const anchorY=existing?existing.entry.y*S*scaleY-fontSize*scaleY:pos.y*scaleY-fontSize*scaleY;
 
   // Use a textarea for wrapping support
   const ta=document.createElement('textarea');
@@ -2374,7 +2381,7 @@ function openTextEditor(canvas,pos,pageNum,existing){
     if(!annotations[pageNum])annotations[pageNum]=[];
     const canvasX=anchorX/scaleX;
     const canvasY=anchorY/scaleY+fontSize;
-    const entry={tool:'text',color,fontSize,x:canvasX,y:canvasY,text,wrapWidth:pixelWidth};
+    const entry={tool:'text',color,fontSize:fontSize/S,x:canvasX/S,y:canvasY/S,text,wrapWidth:pixelWidth/S};
     annotations[pageNum].push(entry);
     restoreAnnotations(canvas,pageNum);
     saveAnnotationsToStorage();
@@ -2397,14 +2404,16 @@ function placeTextAnnotation(canvas,pos,pageNum){
 
 function drawTextAnnotation(canvas,entry){
   const ctx=canvas.getContext('2d');
+  const S=annotScale();
+  const fs=entry.fontSize*S,x=entry.x*S,y=entry.y*S;
   ctx.save();
-  ctx.font=`bold ${entry.fontSize}px Arial,sans-serif`;
+  ctx.font=`bold ${fs}px Arial,sans-serif`;
   ctx.fillStyle=entry.color;
   ctx.globalAlpha=1;
   ctx.globalCompositeOperation='source-over';
-  const lineHeight=entry.fontSize*1.3;
-  const maxWidth=entry.wrapWidth||canvas.width-entry.x-20;
-  wrapText(ctx,entry.text,entry.x,entry.y,maxWidth,lineHeight);
+  const lineHeight=fs*1.3;
+  const maxWidth=entry.wrapWidth?entry.wrapWidth*S:canvas.width-x-20;
+  wrapText(ctx,entry.text,x,y,maxWidth,lineHeight);
   ctx.restore();
 }
 
@@ -2443,10 +2452,12 @@ function setupDrawing(canvas){
       eraseAt(canvas,pos,pageNum);
       return;
     }
-    currentStroke={tool:drawTool,color:drawColor,width:drawWidth,points:[pos]};
+    const S=annotScale();
+    const u={x:pos.x/S,y:pos.y/S};
+    currentStroke={tool:drawTool,color:drawColor,width:drawWidth/S,points:[u]};
     if(!annotations[pageNum])annotations[pageNum]=[];
     annotations[pageNum].push(currentStroke);
-    drawStrokeSeg(canvas,pos,pos,currentStroke);
+    drawStrokeSeg(canvas,u,u,currentStroke);
   }
 
   function move(e){
@@ -2456,9 +2467,11 @@ function setupDrawing(canvas){
     if(drawTool==='eraser'){
       eraseAt(canvas,pos,pageNum);
     } else if(currentStroke){
+      const S=annotScale();
+      const u={x:pos.x/S,y:pos.y/S};
       const prev=currentStroke.points[currentStroke.points.length-1];
-      currentStroke.points.push(pos);
-      drawStrokeSeg(canvas,prev,pos,currentStroke);
+      currentStroke.points.push(u);
+      drawStrokeSeg(canvas,prev,u,currentStroke);
     }
   }
 
@@ -2479,38 +2492,40 @@ function setupDrawing(canvas){
 }
 
 function drawStrokeSeg(canvas,from,to,stroke){
+  // from/to are in page units; drawn at the current zoom
   const ctx=canvas.getContext('2d');
+  const S=annotScale();
   ctx.save();
   if(stroke.tool==='highlight'){
     ctx.globalAlpha=0.35;
     ctx.globalCompositeOperation='multiply';
     ctx.strokeStyle=stroke.color;
-    ctx.lineWidth=stroke.width*4;
+    ctx.lineWidth=stroke.width*4*S;
   } else {
     ctx.globalAlpha=1;
     ctx.globalCompositeOperation='source-over';
     ctx.strokeStyle=stroke.color;
-    ctx.lineWidth=stroke.width;
+    ctx.lineWidth=stroke.width*S;
   }
   ctx.lineCap='round';ctx.lineJoin='round';
-  ctx.beginPath();ctx.moveTo(from.x,from.y);ctx.lineTo(to.x,to.y);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(from.x*S,from.y*S);ctx.lineTo(to.x*S,to.y*S);ctx.stroke();
   ctx.restore();
 }
 
 function eraseAt(canvas,pos,pageNum){
-  const r=drawWidth*6;
+  const S=annotScale();
+  const px=pos.x/S,py=pos.y/S,r=drawWidth*6/S,pad=10/S;
   const ctx=canvas.getContext('2d');
-  ctx.clearRect(pos.x-r,pos.y-r,r*2,r*2);
   if(annotations[pageNum]){
     annotations[pageNum]=annotations[pageNum].filter(stroke=>{
       if(stroke.tool==='text'){
         const lines=(stroke.text||'').split('\n').length;
         const lh=stroke.fontSize*1.3;
-        return!(pos.x>=stroke.x-10&&pos.x<=stroke.x+(stroke.wrapWidth||400)+10&&
-                pos.y>=stroke.y-stroke.fontSize&&pos.y<=stroke.y+lines*lh+10);
+        return!(px>=stroke.x-pad&&px<=stroke.x+(stroke.wrapWidth||400/S)+pad&&
+                py>=stroke.y-stroke.fontSize&&py<=stroke.y+lines*lh+pad);
       }
       return!stroke.points||!stroke.points.some(pt=>
-        Math.abs(pt.x-pos.x)<r&&Math.abs(pt.y-pos.y)<r
+        Math.abs(pt.x-px)<r&&Math.abs(pt.y-py)<r
       );
     });
   }
@@ -2521,6 +2536,7 @@ function eraseAt(canvas,pos,pageNum){
 function restoreAnnotations(canvas,pageNum){
   const strokes=annotations[pageNum]||[];
   const ctx=canvas.getContext('2d');
+  const S=annotScale();
   ctx.clearRect(0,0,canvas.width,canvas.height);
   for(const stroke of strokes){
     // Text annotations
@@ -2534,18 +2550,18 @@ function restoreAnnotations(canvas,pageNum){
       ctx.globalAlpha=0.35;
       ctx.globalCompositeOperation='multiply';
       ctx.strokeStyle=stroke.color;
-      ctx.lineWidth=stroke.width*4;
+      ctx.lineWidth=stroke.width*4*S;
     } else {
       ctx.globalAlpha=1;
       ctx.globalCompositeOperation='source-over';
       ctx.strokeStyle=stroke.color;
-      ctx.lineWidth=stroke.width;
+      ctx.lineWidth=stroke.width*S;
     }
     ctx.lineCap='round';ctx.lineJoin='round';
     ctx.beginPath();
-    ctx.moveTo(stroke.points[0].x,stroke.points[0].y);
+    ctx.moveTo(stroke.points[0].x*S,stroke.points[0].y*S);
     for(let i=1;i<stroke.points.length;i++){
-      ctx.lineTo(stroke.points[i].x,stroke.points[i].y);
+      ctx.lineTo(stroke.points[i].x*S,stroke.points[i].y*S);
     }
     ctx.stroke();
     ctx.restore();
@@ -2565,15 +2581,46 @@ function clearAnnotations(){
 
 function saveAnnotationsToStorage(){
   try{
+    annotations.__v=2; // 2 = stored in page units
     localStorage.setItem('annot_'+selId,JSON.stringify(annotations));
   }catch(e){}
 }
 
 function loadAnnotationsFromStorage(){
+  _annotLegacy=false;
   try{
     const saved=localStorage.getItem('annot_'+selId);
     annotations=saved?JSON.parse(saved):{};
+    // Older saves were in screen pixels at whatever zoom they were drawn; convert once the page scale is known
+    if(annotations.__v!==2&&Object.keys(annotations).some(k=>k!=='__v'))_annotLegacy=true;
   }catch(e){annotations={};}
+}
+// One-time conversion of older (pixel-based) annotations to page units.
+// Assumes they were drawn at the zoom this score was last shown at, so they look the same as before the change.
+function migrateLegacyAnnotations(){
+  if(!_annotLegacy)return;
+  const S=annotScale();
+  if(!(S>0))return;
+  try{
+    const key='annot_'+selId;
+    const bak='annotBackupPixels_'+selId;
+    if(!localStorage.getItem(bak)){const raw=localStorage.getItem(key);if(raw)localStorage.setItem(bak,raw);}
+  }catch(e){}
+  const k=1/S;
+  for(const page of Object.keys(annotations)){
+    if(page==='__v')continue;
+    for(const e of annotations[page]||[]){
+      if(e.tool==='text'){
+        e.x*=k;e.y*=k;e.fontSize*=k;
+        if(e.wrapWidth)e.wrapWidth*=k;
+      }else{
+        e.width*=k;
+        for(const pt of e.points||[]){pt.x*=k;pt.y*=k;}
+      }
+    }
+  }
+  _annotLegacy=false;
+  saveAnnotationsToStorage();
 }
 
 
